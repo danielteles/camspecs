@@ -2,13 +2,57 @@
   "Layout": {
     "skipToContent": "Skip to main content"
   },
+  "LanguageSwitcher": {
+    "label": "Language"
+  },
   "Metadata": {
     "title": "CamSpecs — Camera & Lens Equivalence Calculator",
     "description": "Compare cameras and lenses across sensor formats with a dynamic equivalence calculator."
+  },
+  "Common": {
+    "siteName": "CamSpecs"
   },
   "HomePage": {
     "title": "CamSpecs",
     "tagline": "Compare cameras and lenses across sensor formats.",
     "description": "A technical comparison platform with a dynamic focal length, aperture and field-of-view equivalence calculator."
+  },
+  "Showcase": {
+    "title": "Component Showcase",
+    "description": "A reference of the base design system components used throughout CamSpecs.",
+    "buttons": {
+      "heading": "Buttons",
+      "default": "Default",
+      "outline": "Outline",
+      "secondary": "Secondary",
+      "ghost": "Ghost",
+      "destructive": "Destructive",
+      "link": "Link",
+      "disabled": "Disabled"
+    },
+    "inputs": {
+      "heading": "Inputs",
+      "emailLabel": "Email address",
+      "emailPlaceholder": "you@example.com",
+      "disabledLabel": "Disabled field",
+      "invalidLabel": "Camera slug",
+      "invalidError": "This slug does not match any camera in the catalog."
+    },
+    "badges": {
+      "heading": "Badges",
+      "default": "Full-frame",
+      "secondary": "APS-C",
+      "outline": "Micro Four Thirds",
+      "destructive": "Discontinued"
+    },
+    "table": {
+      "heading": "Table",
+      "caption": "Cameras in the mock catalog",
+      "brand": "Brand",
+      "model": "Model",
+      "mount": "Mount",
+      "sensorFormat": "Sensor format",
+      "megapixels": "Megapixels"
+    }
   }
 }

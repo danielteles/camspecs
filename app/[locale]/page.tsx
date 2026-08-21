@@ -14,12 +14,8 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
       <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
         {t("title")}
       </h1>
-      <p className="text-lg text-neutral-700 dark:text-neutral-300">
-        {t("tagline")}
-      </p>
-      <p className="text-base text-neutral-600 dark:text-neutral-400">
-        {t("description")}
-      </p>
+      <p className="text-foreground/80 text-lg">{t("tagline")}</p>
+      <p className="text-muted-foreground text-base">{t("description")}</p>
     </main>
   );
 }

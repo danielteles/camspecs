@@ -2,13 +2,57 @@
   "Layout": {
     "skipToContent": "Pular para o conteúdo principal"
   },
+  "LanguageSwitcher": {
+    "label": "Idioma"
+  },
   "Metadata": {
     "title": "CamSpecs — Calculadora de Equivalência de Câmeras e Lentes",
     "description": "Compare câmeras e lentes entre formatos de sensor com uma calculadora de equivalência dinâmica."
+  },
+  "Common": {
+    "siteName": "CamSpecs"
   },
   "HomePage": {
     "title": "CamSpecs",
     "tagline": "Compare câmeras e lentes entre formatos de sensor.",
     "description": "Uma plataforma técnica de comparação com uma calculadora dinâmica de equivalência de distância focal, abertura e campo de visão."
+  },
+  "Showcase": {
+    "title": "Vitrine de Componentes",
+    "description": "Uma referência dos componentes base do design system usados no CamSpecs.",
+    "buttons": {
+      "heading": "Botões",
+      "default": "Padrão",
+      "outline": "Contorno",
+      "secondary": "Secundário",
+      "ghost": "Fantasma",
+      "destructive": "Destrutivo",
+      "link": "Link",
+      "disabled": "Desabilitado"
+    },
+    "inputs": {
+      "heading": "Campos de texto",
+      "emailLabel": "Endereço de e-mail",
+      "emailPlaceholder": "voce@exemplo.com",
+      "disabledLabel": "Campo desabilitado",
+      "invalidLabel": "Slug da câmera",
+      "invalidError": "Este slug não corresponde a nenhuma câmera no catálogo."
+    },
+    "badges": {
+      "heading": "Selos",
+      "default": "Quadro cheio",
+      "secondary": "APS-C",
+      "outline": "Micro Quatro Terços",
+      "destructive": "Descontinuada"
+    },
+    "table": {
+      "heading": "Tabela",
+      "caption": "Câmeras no catálogo de exemplo",
+      "brand": "Marca",
+      "model": "Modelo",
+      "mount": "Encaixe",
+      "sensorFormat": "Formato do sensor",
+      "megapixels": "Megapixels"
+    }
   }
 }

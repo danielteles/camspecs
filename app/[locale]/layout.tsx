@@ -4,6 +4,8 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Geist, Geist_Mono } from "next/font/google";
 import { notFound } from "next/navigation";
 
+import { LanguageSwitcher } from "@/components/language-switcher";
+import { Link } from "@/i18n/navigation";
 import { routing } from "@/i18n/routing";
 
 import "../globals.css";
@@ -47,6 +49,7 @@ export default async function LocaleLayout({
   setRequestLocale(locale);
 
   const t = await getTranslations({ locale, namespace: "Layout" });
+  const tCommon = await getTranslations({ locale, namespace: "Common" });
 
   return (
     <html
@@ -54,14 +57,27 @@ export default async function LocaleLayout({
       dir="ltr"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col bg-white text-neutral-900 dark:bg-neutral-950 dark:text-neutral-50">
+      <body className="flex min-h-full flex-col">
         <a
           href="#main-content"
-          className="sr-only focus-visible:not-sr-only focus-visible:absolute focus-visible:top-2 focus-visible:left-2 focus-visible:z-50 focus-visible:rounded-md focus-visible:bg-blue-600 focus-visible:px-4 focus-visible:py-2 focus-visible:text-white focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:outline-none"
+          className="focus-visible:bg-primary focus-visible:text-primary-foreground focus-visible:ring-ring/50 sr-only focus-visible:not-sr-only focus-visible:absolute focus-visible:top-2 focus-visible:left-2 focus-visible:z-50 focus-visible:rounded-md focus-visible:px-4 focus-visible:py-2 focus-visible:ring-3 focus-visible:outline-none"
         >
           {t("skipToContent")}
         </a>
-        <NextIntlClientProvider>{children}</NextIntlClientProvider>
+        <NextIntlClientProvider>
+          <header className="border-border border-b">
+            <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
+              <Link
+                href="/"
+                className="focus-visible:ring-ring/50 rounded-md text-base font-semibold tracking-tight focus-visible:ring-3 focus-visible:outline-none"
+              >
+                {tCommon("siteName")}
+              </Link>
+              <LanguageSwitcher />
+            </div>
+          </header>
+          {children}
+        </NextIntlClientProvider>
       </body>
     </html>
   );
