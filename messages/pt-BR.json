@@ -25,6 +25,27 @@
     "openMenu": "Abrir menu",
     "closeMenu": "Fechar menu"
   },
+  "Catalog": {
+    "allFilter": "Todos",
+    "viewSpecsCta": "Ver especificações",
+    "addToCompareCta": "Adicionar à comparação",
+    "cameras": {
+      "title": "Câmeras",
+      "description": "Explore o catálogo completo de câmeras.",
+      "searchPlaceholder": "Buscar por marca ou modelo…",
+      "searchLabel": "Buscar câmeras",
+      "sensorFormatFilterLabel": "Formato do sensor",
+      "noResults": "Nenhuma câmera corresponde à sua busca."
+    },
+    "lenses": {
+      "title": "Lentes",
+      "description": "Explore o catálogo completo de lentes.",
+      "searchPlaceholder": "Buscar por marca ou modelo…",
+      "searchLabel": "Buscar lentes",
+      "mountFilterLabel": "Encaixe",
+      "noResults": "Nenhuma lente corresponde à sua busca."
+    }
+  },
   "CompareSelector": {
     "triggerLabel": "Adicionar uma câmera ou lente…",
     "ariaLabel": "Buscar câmeras e lentes",

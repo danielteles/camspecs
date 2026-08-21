@@ -63,6 +63,16 @@ export const SENSOR_FORMAT_KEYS: Record<SensorFormat, string> = {
   "medium-format": "ComparePage.sensorFormatMediumFormat",
 };
 
+export const SENSOR_FORMAT_BADGE_VARIANT: Record<
+  SensorFormat,
+  "default" | "secondary" | "outline"
+> = {
+  "full-frame": "default",
+  "aps-c": "secondary",
+  "micro-four-thirds": "outline",
+  "medium-format": "outline",
+};
+
 function formatCropFactor(cropFactor: number): string {
   return `${cropFactor.toFixed(2)}×`;
 }

@@ -25,6 +25,27 @@
     "openMenu": "Open menu",
     "closeMenu": "Close menu"
   },
+  "Catalog": {
+    "allFilter": "All",
+    "viewSpecsCta": "View specs",
+    "addToCompareCta": "Add to compare",
+    "cameras": {
+      "title": "Cameras",
+      "description": "Browse the full camera catalog.",
+      "searchPlaceholder": "Search by brand or model…",
+      "searchLabel": "Search cameras",
+      "sensorFormatFilterLabel": "Sensor format",
+      "noResults": "No cameras match your search."
+    },
+    "lenses": {
+      "title": "Lenses",
+      "description": "Browse the full lens catalog.",
+      "searchPlaceholder": "Search by brand or model…",
+      "searchLabel": "Search lenses",
+      "mountFilterLabel": "Mount",
+      "noResults": "No lenses match your search."
+    }
+  },
   "CompareSelector": {
     "triggerLabel": "Add a camera or lens…",
     "ariaLabel": "Search cameras and lenses",

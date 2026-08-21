@@ -6,20 +6,10 @@ import { Link } from "@/i18n/navigation";
 import {
   formatAperture,
   formatFocalLengthRange,
+  SENSOR_FORMAT_BADGE_VARIANT,
   SENSOR_FORMAT_KEYS,
 } from "@/lib/compare-data";
 import { CAMERAS, LENSES, MOUNTS } from "@/lib/mock-data";
-import type { SensorFormat } from "@/lib/types";
-
-const SENSOR_FORMAT_BADGE_VARIANT: Record<
-  SensorFormat,
-  "default" | "secondary" | "outline"
-> = {
-  "full-frame": "default",
-  "aps-c": "secondary",
-  "micro-four-thirds": "outline",
-  "medium-format": "outline",
-};
 
 export default async function HomePage({ params }: PageProps<"/[locale]">) {
   const { locale } = await params;
