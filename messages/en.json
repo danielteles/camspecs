@@ -9,10 +9,49 @@
     "title": "CamSpecs — Camera & Lens Equivalence Calculator",
     "description": "Compare cameras and lenses across sensor formats with a dynamic equivalence calculator."
   },
+  "NotFound": {
+    "eyebrow": "404",
+    "title": "Page not found",
+    "description": "The page you're looking for doesn't exist or may have moved.",
+    "backHome": "Back to home"
+  },
   "Common": {
     "siteName": "CamSpecs",
     "primaryNavLabel": "Primary",
-    "compareLink": "Compare"
+    "homeLink": "Home",
+    "compareLink": "Compare",
+    "camerasLink": "Cameras",
+    "lensesLink": "Lenses",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "breadcrumbLabel": "Breadcrumb"
+  },
+  "Footer": {
+    "catalogsHeading": "Catalogs",
+    "popularComparisonsHeading": "Popular comparisons",
+    "moreHeading": "More",
+    "githubLink": "GitHub repository"
+  },
+  "Catalog": {
+    "allFilter": "All",
+    "viewSpecsCta": "View specs",
+    "addToCompareCta": "Add to compare",
+    "cameras": {
+      "title": "Cameras",
+      "description": "Browse the full camera catalog.",
+      "searchPlaceholder": "Search by brand or model…",
+      "searchLabel": "Search cameras",
+      "sensorFormatFilterLabel": "Sensor format",
+      "noResults": "No cameras match your search."
+    },
+    "lenses": {
+      "title": "Lenses",
+      "description": "Browse the full lens catalog.",
+      "searchPlaceholder": "Search by brand or model…",
+      "searchLabel": "Search lenses",
+      "mountFilterLabel": "Mount",
+      "noResults": "No lenses match your search."
+    }
   },
   "CompareSelector": {
     "triggerLabel": "Add a camera or lens…",
@@ -32,6 +71,9 @@
     "emptyState": "Search for cameras or lenses above to start comparing.",
     "addAnotherState": "Add another item above to see a comparison.",
     "diffToggleLabel": "Hide identical specs",
+    "swapItemsCta": "Swap items",
+    "copyLinkCta": "Copy link",
+    "copiedLabel": "Copied!",
     "notApplicable": "—",
     "sensorFormatFullFrame": "Full-frame",
     "sensorFormatApsC": "APS-C",
@@ -70,7 +112,15 @@
   "HomePage": {
     "title": "CamSpecs",
     "tagline": "Compare cameras and lenses across sensor formats.",
-    "description": "A technical comparison platform with a dynamic focal length, aperture and field-of-view equivalence calculator."
+    "description": "A technical comparison platform with a dynamic focal length, aperture and field-of-view equivalence calculator.",
+    "startComparingCta": "Start comparing",
+    "browseCamerasCta": "Browse cameras",
+    "browseLensesCta": "Browse lenses",
+    "featuredHeading": "Featured equipment",
+    "featuredDescription": "A sample of what's in the catalog — jump straight to full specs.",
+    "featuredCamerasHeading": "Cameras",
+    "featuredLensesHeading": "Lenses",
+    "viewSpecsCta": "View specs"
   },
   "Showcase": {
     "title": "Component Showcase",

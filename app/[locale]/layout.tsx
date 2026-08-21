@@ -4,8 +4,8 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Geist, Geist_Mono } from "next/font/google";
 import { notFound } from "next/navigation";
 
-import { LanguageSwitcher } from "@/components/language-switcher";
-import { Link } from "@/i18n/navigation";
+import { Footer } from "@/components/footer";
+import { Navbar } from "@/components/navbar";
 import { routing } from "@/i18n/routing";
 import { SITE_URL } from "@/lib/site-config";
 
@@ -51,7 +51,6 @@ export default async function LocaleLayout({
   setRequestLocale(locale);
 
   const t = await getTranslations({ locale, namespace: "Layout" });
-  const tCommon = await getTranslations({ locale, namespace: "Common" });
 
   return (
     <html
@@ -67,28 +66,9 @@ export default async function LocaleLayout({
           {t("skipToContent")}
         </a>
         <NextIntlClientProvider>
-          <header className="border-border border-b">
-            <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
-              <div className="flex items-center gap-6">
-                <Link
-                  href="/"
-                  className="focus-visible:ring-ring/50 rounded-md text-base font-semibold tracking-tight focus-visible:ring-3 focus-visible:outline-none"
-                >
-                  {tCommon("siteName")}
-                </Link>
-                <nav aria-label={tCommon("primaryNavLabel")}>
-                  <Link
-                    href="/compare"
-                    className="focus-visible:ring-ring/50 text-muted-foreground rounded-md text-sm font-medium focus-visible:ring-3 focus-visible:outline-none"
-                  >
-                    {tCommon("compareLink")}
-                  </Link>
-                </nav>
-              </div>
-              <LanguageSwitcher />
-            </div>
-          </header>
+          <Navbar />
           {children}
+          <Footer />
         </NextIntlClientProvider>
       </body>
     </html>

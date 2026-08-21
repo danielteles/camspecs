@@ -9,10 +9,49 @@
     "title": "CamSpecs — Calculadora de Equivalência de Câmeras e Lentes",
     "description": "Compare câmeras e lentes entre formatos de sensor com uma calculadora de equivalência dinâmica."
   },
+  "NotFound": {
+    "eyebrow": "404",
+    "title": "Página não encontrada",
+    "description": "A página que você está procurando não existe ou pode ter sido movida.",
+    "backHome": "Voltar para o início"
+  },
   "Common": {
     "siteName": "CamSpecs",
     "primaryNavLabel": "Principal",
-    "compareLink": "Comparar"
+    "homeLink": "Início",
+    "compareLink": "Comparar",
+    "camerasLink": "Câmeras",
+    "lensesLink": "Lentes",
+    "openMenu": "Abrir menu",
+    "closeMenu": "Fechar menu",
+    "breadcrumbLabel": "Trilha de navegação"
+  },
+  "Footer": {
+    "catalogsHeading": "Catálogos",
+    "popularComparisonsHeading": "Comparações populares",
+    "moreHeading": "Mais",
+    "githubLink": "Repositório no GitHub"
+  },
+  "Catalog": {
+    "allFilter": "Todos",
+    "viewSpecsCta": "Ver especificações",
+    "addToCompareCta": "Adicionar à comparação",
+    "cameras": {
+      "title": "Câmeras",
+      "description": "Explore o catálogo completo de câmeras.",
+      "searchPlaceholder": "Buscar por marca ou modelo…",
+      "searchLabel": "Buscar câmeras",
+      "sensorFormatFilterLabel": "Formato do sensor",
+      "noResults": "Nenhuma câmera corresponde à sua busca."
+    },
+    "lenses": {
+      "title": "Lentes",
+      "description": "Explore o catálogo completo de lentes.",
+      "searchPlaceholder": "Buscar por marca ou modelo…",
+      "searchLabel": "Buscar lentes",
+      "mountFilterLabel": "Encaixe",
+      "noResults": "Nenhuma lente corresponde à sua busca."
+    }
   },
   "CompareSelector": {
     "triggerLabel": "Adicionar uma câmera ou lente…",
@@ -32,6 +71,9 @@
     "emptyState": "Busque câmeras ou lentes acima para começar a comparar.",
     "addAnotherState": "Adicione outro item acima para ver uma comparação.",
     "diffToggleLabel": "Ocultar especificações idênticas",
+    "swapItemsCta": "Trocar itens",
+    "copyLinkCta": "Copiar link",
+    "copiedLabel": "Copiado!",
     "notApplicable": "—",
     "sensorFormatFullFrame": "Quadro cheio",
     "sensorFormatApsC": "APS-C",
@@ -70,7 +112,15 @@
   "HomePage": {
     "title": "CamSpecs",
     "tagline": "Compare câmeras e lentes entre formatos de sensor.",
-    "description": "Uma plataforma técnica de comparação com uma calculadora dinâmica de equivalência de distância focal, abertura e campo de visão."
+    "description": "Uma plataforma técnica de comparação com uma calculadora dinâmica de equivalência de distância focal, abertura e campo de visão.",
+    "startComparingCta": "Começar a comparar",
+    "browseCamerasCta": "Ver câmeras",
+    "browseLensesCta": "Ver lentes",
+    "featuredHeading": "Equipamentos em destaque",
+    "featuredDescription": "Uma amostra do catálogo — vá direto para as especificações completas.",
+    "featuredCamerasHeading": "Câmeras",
+    "featuredLensesHeading": "Lentes",
+    "viewSpecsCta": "Ver especificações"
   },
   "Showcase": {
     "title": "Vitrine de Componentes",
