@@ -1,0 +1,14 @@
+{
+  "Layout": {
+    "skipToContent": "Skip to main content"
+  },
+  "Metadata": {
+    "title": "CamSpecs — Camera & Lens Equivalence Calculator",
+    "description": "Compare cameras and lenses across sensor formats with a dynamic equivalence calculator."
+  },
+  "HomePage": {
+    "title": "CamSpecs",
+    "tagline": "Compare cameras and lenses across sensor formats.",
+    "description": "A technical comparison platform with a dynamic focal length, aperture and field-of-view equivalence calculator."
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "Layout": {
+    "skipToContent": "Pular para o conteúdo principal"
+  },
+  "Metadata": {
+    "title": "CamSpecs — Calculadora de Equivalência de Câmeras e Lentes",
+    "description": "Compare câmeras e lentes entre formatos de sensor com uma calculadora de equivalência dinâmica."
+  },
+  "HomePage": {
+    "title": "CamSpecs",
+    "tagline": "Compare câmeras e lentes entre formatos de sensor.",
+    "description": "Uma plataforma técnica de comparação com uma calculadora dinâmica de equivalência de distância focal, abertura e campo de visão."
+  }
+}
