@@ -81,7 +81,15 @@
   "HomePage": {
     "title": "CamSpecs",
     "tagline": "Compare cameras and lenses across sensor formats.",
-    "description": "A technical comparison platform with a dynamic focal length, aperture and field-of-view equivalence calculator."
+    "description": "A technical comparison platform with a dynamic focal length, aperture and field-of-view equivalence calculator.",
+    "startComparingCta": "Start comparing",
+    "browseCamerasCta": "Browse cameras",
+    "browseLensesCta": "Browse lenses",
+    "featuredHeading": "Featured equipment",
+    "featuredDescription": "A sample of what's in the catalog — jump straight to full specs.",
+    "featuredCamerasHeading": "Cameras",
+    "featuredLensesHeading": "Lenses",
+    "viewSpecsCta": "View specs"
   },
   "Showcase": {
     "title": "Component Showcase",

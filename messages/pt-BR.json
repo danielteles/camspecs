@@ -81,7 +81,15 @@
   "HomePage": {
     "title": "CamSpecs",
     "tagline": "Compare câmeras e lentes entre formatos de sensor.",
-    "description": "Uma plataforma técnica de comparação com uma calculadora dinâmica de equivalência de distância focal, abertura e campo de visão."
+    "description": "Uma plataforma técnica de comparação com uma calculadora dinâmica de equivalência de distância focal, abertura e campo de visão.",
+    "startComparingCta": "Começar a comparar",
+    "browseCamerasCta": "Ver câmeras",
+    "browseLensesCta": "Ver lentes",
+    "featuredHeading": "Equipamentos em destaque",
+    "featuredDescription": "Uma amostra do catálogo — vá direto para as especificações completas.",
+    "featuredCamerasHeading": "Câmeras",
+    "featuredLensesHeading": "Lentes",
+    "viewSpecsCta": "Ver especificações"
   },
   "Showcase": {
     "title": "Vitrine de Componentes",
