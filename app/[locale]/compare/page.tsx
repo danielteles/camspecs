@@ -1,6 +1,7 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Suspense } from "react";
 
+import { CompareActions } from "@/components/compare-actions";
 import { CompareSelector } from "@/components/compare-selector";
 import { DiffToggle } from "@/components/diff-toggle";
 import {
@@ -135,6 +136,10 @@ export default async function ComparePage({
 
       <Suspense>
         <CompareSelector />
+      </Suspense>
+
+      <Suspense>
+        <CompareActions />
       </Suspense>
 
       {items.length === 0 ? (
