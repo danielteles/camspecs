@@ -20,6 +20,9 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
     "coverage/**",
+    // Python ETL pipeline: not JS/TS, and its venv bundles vendored JS
+    // (e.g. Playwright's driver assets) that isn't ours to lint.
+    "scripts/scraper/**",
   ]),
 ]);
 
