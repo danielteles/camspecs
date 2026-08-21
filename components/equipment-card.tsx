@@ -32,8 +32,17 @@ export function EquipmentCard({
       )}
     >
       <div className="flex items-center justify-between gap-2">
-        <p className="text-muted-foreground text-sm">{eyebrow}</p>
-        {badgeLabel && <Badge variant={badgeVariant}>{badgeLabel}</Badge>}
+        <p
+          className="text-muted-foreground min-w-0 truncate text-sm"
+          title={eyebrow}
+        >
+          {eyebrow}
+        </p>
+        {badgeLabel && (
+          <Badge variant={badgeVariant} className="shrink-0">
+            {badgeLabel}
+          </Badge>
+        )}
       </div>
       <h3 className="text-base font-semibold tracking-tight">{title}</h3>
       <p className="text-muted-foreground text-sm">{meta}</p>

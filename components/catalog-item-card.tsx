@@ -28,8 +28,17 @@ export function CatalogItemCard({
   return (
     <div className="border-border flex flex-col gap-2 rounded-lg border p-4">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-muted-foreground text-sm">{eyebrow}</p>
-        {badgeLabel && <Badge variant={badgeVariant}>{badgeLabel}</Badge>}
+        <p
+          className="text-muted-foreground min-w-0 truncate text-sm"
+          title={eyebrow}
+        >
+          {eyebrow}
+        </p>
+        {badgeLabel && (
+          <Badge variant={badgeVariant} className="shrink-0">
+            {badgeLabel}
+          </Badge>
+        )}
       </div>
       <h3 className="text-base font-semibold tracking-tight">
         <Link
@@ -40,11 +49,11 @@ export function CatalogItemCard({
         </Link>
       </h3>
       <p className="text-muted-foreground text-sm">{meta}</p>
-      <div className="mt-2 flex gap-2">
-        <Button asChild size="sm" variant="outline" className="flex-1">
+      <div className="mt-2 flex flex-col gap-2">
+        <Button asChild size="sm" variant="outline">
           <Link href={href}>{viewSpecsLabel}</Link>
         </Button>
-        <Button asChild size="sm" className="flex-1">
+        <Button asChild size="sm">
           <Link href={compareHref}>{addToCompareLabel}</Link>
         </Button>
       </div>
