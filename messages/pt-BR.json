@@ -42,6 +42,7 @@
       "brand": "Marca",
       "model": "Modelo",
       "mount": "Encaixe",
+      "releaseYear": "Ano de lançamento",
       "sensorFormat": "Formato do sensor",
       "sensorSize": "Tamanho do sensor",
       "cropFactor": "Fator de corte (equiv. 35mm)",
@@ -52,6 +53,16 @@
       "equivalentAperture": "Abertura equivalente (35mm, PdC)",
       "diagonalFieldOfView": "Campo de visão diagonal"
     }
+  },
+  "ProductPage": {
+    "specsHeading": "Especificações",
+    "compareCta": "Adicionar à comparação",
+    "compatibleLensesHeading": "Lentes compatíveis",
+    "compatibleCamerasHeading": "Câmeras compatíveis",
+    "noCompatibleLenses": "Ainda não há lentes compatíveis no catálogo.",
+    "noCompatibleCameras": "Ainda não há câmeras compatíveis no catálogo.",
+    "cameraMetaDescription": "Especificações, fator de corte e megapixels da {brand} {model} no CamSpecs.",
+    "lensMetaDescription": "Especificações, distância focal e abertura equivalentes (35mm) da {brand} {model} no CamSpecs."
   },
   "HomePage": {
     "title": "CamSpecs",

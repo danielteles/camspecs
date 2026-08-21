@@ -1,3 +1,5 @@
+import type { getTranslations } from "next-intl/server";
+
 import {
   getCropFactor,
   getDiagonalFieldOfView,
@@ -134,6 +136,11 @@ const ROW_DEFINITIONS: RowDefinition[] = [
     getValue: (item) => MOUNTS[item.mount].name,
   },
   {
+    id: "releaseYear",
+    labelKey: "ComparePage.rows.releaseYear",
+    getValue: (item) => String(item.releaseYear),
+  },
+  {
     id: "sensorFormat",
     labelKey: "ComparePage.rows.sensorFormat",
     getValue: (item) =>
@@ -253,4 +260,30 @@ export function buildComparisonRows(items: ComparisonItem[]): ComparisonRow[] {
       isIdentical,
     };
   });
+}
+
+type Translator = Awaited<ReturnType<typeof getTranslations>>;
+
+/** Resolves a raw row value (plain text, an `i18n:`-marked key, or `null`)
+ * to display text, translating as needed. Shared by the compare table,
+ * product pages, and OG images so they all format values identically. */
+export function formatRowValue(value: string | null, t: Translator): string {
+  if (value === null) {
+    return t("ComparePage.notApplicable");
+  }
+  const key = getI18nKey(value);
+  return key ? t(key) : value;
+}
+
+/** Looks up one item's formatted value for a given row id. `itemIndex`
+ * matches the position of the item in the array passed to
+ * `buildComparisonRows` (typically `0` for single-item product pages). */
+export function getFormattedRowValue(
+  rows: ComparisonRow[],
+  rowId: string,
+  itemIndex: number,
+  t: Translator,
+): string {
+  const row = rows.find((r) => r.id === rowId);
+  return formatRowValue(row?.values[itemIndex] ?? null, t);
 }

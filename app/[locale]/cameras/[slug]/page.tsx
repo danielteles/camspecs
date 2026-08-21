@@ -1,0 +1,159 @@
+import type { Metadata } from "next";
+import { getTranslations, setRequestLocale } from "next-intl/server";
+import { notFound } from "next/navigation";
+
+import { Button } from "@/components/ui/button";
+import { Link } from "@/i18n/navigation";
+import {
+  buildComparisonRows,
+  formatRowValue,
+  resolveComparisonItems,
+  type ComparisonRow,
+} from "@/lib/compare-data";
+import { CAMERAS, LENSES, MOUNTS } from "@/lib/mock-data";
+
+const SPEC_ROW_IDS = [
+  "brand",
+  "model",
+  "mount",
+  "releaseYear",
+  "sensorFormat",
+  "sensorSize",
+  "cropFactor",
+  "megapixels",
+];
+
+export function generateStaticParams() {
+  return CAMERAS.map((camera) => ({ slug: camera.slug }));
+}
+
+// Mock data never changes at runtime, but a real backend's catalog would;
+// this demonstrates the ISR revalidation window a live deployment would use.
+export const revalidate = 3600;
+
+export async function generateMetadata({
+  params,
+}: PageProps<"/[locale]/cameras/[slug]">): Promise<Metadata> {
+  const { locale, slug } = await params;
+  const camera = CAMERAS.find((c) => c.slug === slug);
+  if (!camera) {
+    return {};
+  }
+
+  const t = await getTranslations({ locale, namespace: "ProductPage" });
+  const title = `${camera.brand} ${camera.model}`;
+  const description = t("cameraMetaDescription", {
+    brand: camera.brand,
+    model: camera.model,
+  });
+
+  return {
+    title,
+    description,
+    alternates: {
+      canonical: `/${locale}/cameras/${slug}`,
+      languages: {
+        en: `/en/cameras/${slug}`,
+        "pt-BR": `/pt-BR/cameras/${slug}`,
+      },
+    },
+    openGraph: { title, description },
+  };
+}
+
+export default async function CameraPage({
+  params,
+}: PageProps<"/[locale]/cameras/[slug]">) {
+  const { locale, slug } = await params;
+  setRequestLocale(locale);
+
+  const [item] = resolveComparisonItems([slug]);
+  if (!item || item.type !== "camera") {
+    notFound();
+  }
+
+  const rows = buildComparisonRows([item]);
+  const specRows = SPEC_ROW_IDS.map((id) =>
+    rows.find((row) => row.id === id),
+  ).filter((row): row is ComparisonRow => row !== undefined);
+
+  const t = await getTranslations();
+  const tProduct = await getTranslations("ProductPage");
+  const compatibleLenses = LENSES.filter((lens) => lens.mount === item.mount);
+
+  return (
+    <main
+      id="main-content"
+      className="mx-auto flex w-full max-w-3xl flex-col gap-8 px-4 py-10 sm:px-6 lg:px-8"
+    >
+      <div className="flex flex-col gap-2">
+        <p className="text-muted-foreground text-sm">
+          {MOUNTS[item.mount].name}
+        </p>
+        <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
+          {item.brand} {item.model}
+        </h1>
+        <Button asChild className="mt-2 self-start">
+          <Link href={`/compare?items=${item.slug}`}>
+            {tProduct("compareCta")}
+          </Link>
+        </Button>
+      </div>
+
+      <section
+        aria-labelledby="camera-specs-heading"
+        className="flex flex-col gap-4"
+      >
+        <h2
+          id="camera-specs-heading"
+          className="text-xl font-semibold tracking-tight"
+        >
+          {tProduct("specsHeading")}
+        </h2>
+        <dl className="divide-border border-border divide-y rounded-lg border">
+          {specRows.map((row) => (
+            <div
+              key={row.id}
+              className="flex items-baseline justify-between gap-4 px-4 py-3 text-sm"
+            >
+              <dt className="text-muted-foreground">{t(row.labelKey)}</dt>
+              <dd className="text-right font-medium">
+                {formatRowValue(row.values[0] ?? null, t)}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </section>
+
+      <section
+        aria-labelledby="compatible-lenses-heading"
+        className="flex flex-col gap-4"
+      >
+        <h2
+          id="compatible-lenses-heading"
+          className="text-xl font-semibold tracking-tight"
+        >
+          {tProduct("compatibleLensesHeading")}
+        </h2>
+        {compatibleLenses.length === 0 ? (
+          <p className="text-muted-foreground text-sm">
+            {tProduct("noCompatibleLenses")}
+          </p>
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {compatibleLenses.map((lens) => (
+              <li key={lens.slug}>
+                <Link
+                  href={`/lenses/${lens.slug}`}
+                  className="focus-visible:ring-ring/50 rounded-md text-sm font-medium hover:underline focus-visible:ring-3 focus-visible:outline-none"
+                >
+                  {lens.brand} {lens.model}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </main>
+  );
+}

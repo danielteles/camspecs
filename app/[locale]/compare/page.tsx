@@ -12,23 +12,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Link } from "@/i18n/navigation";
 import {
   buildComparisonRows,
-  getI18nKey,
+  formatRowValue,
   resolveComparisonItems,
   type ComparisonRow,
 } from "@/lib/compare-data";
 import { COMPARE_ITEMS_PARAM, parseCompareItems } from "@/lib/compare-params";
-
-type Translator = Awaited<ReturnType<typeof getTranslations>>;
-
-function formatValue(value: string | null, t: Translator): string {
-  if (value === null) {
-    return t("ComparePage.notApplicable");
-  }
-  const i18nKey = getI18nKey(value);
-  return i18nKey ? t(i18nKey) : value;
-}
 
 export default async function ComparePage({
   params,
@@ -61,7 +52,12 @@ export default async function ComparePage({
               </TableHead>
               {items.map((item) => (
                 <TableHead key={item.slug} scope="col">
-                  {item.brand} {item.model}
+                  <Link
+                    href={`/${item.type === "camera" ? "cameras" : "lenses"}/${item.slug}`}
+                    className="focus-visible:ring-ring/50 rounded-md hover:underline focus-visible:ring-3 focus-visible:outline-none"
+                  >
+                    {item.brand} {item.model}
+                  </Link>
                 </TableHead>
               ))}
             </TableRow>
@@ -77,7 +73,7 @@ export default async function ComparePage({
                 </TableHead>
                 {row.values.map((value, index) => (
                   <TableCell key={items[index]?.slug}>
-                    {formatValue(value, tGlobal)}
+                    {formatRowValue(value, tGlobal)}
                   </TableCell>
                 ))}
               </TableRow>
@@ -94,11 +90,14 @@ export default async function ComparePage({
             aria-labelledby={`compare-card-${item.slug}`}
             className="border-border rounded-lg border p-4"
           >
-            <h3
-              id={`compare-card-${item.slug}`}
-              className="text-base font-semibold"
-            >
-              {item.brand} {item.model}
+            <h3 className="text-base font-semibold">
+              <Link
+                id={`compare-card-${item.slug}`}
+                href={`/${item.type === "camera" ? "cameras" : "lenses"}/${item.slug}`}
+                className="focus-visible:ring-ring/50 rounded-md hover:underline focus-visible:ring-3 focus-visible:outline-none"
+              >
+                {item.brand} {item.model}
+              </Link>
             </h3>
             <dl className="divide-border mt-3 divide-y">
               {rows.map((row) => (
@@ -111,7 +110,7 @@ export default async function ComparePage({
                     {tGlobal(row.labelKey)}
                   </dt>
                   <dd className="text-right font-medium">
-                    {formatValue(row.values[itemIndex] ?? null, tGlobal)}
+                    {formatRowValue(row.values[itemIndex] ?? null, tGlobal)}
                   </dd>
                 </div>
               ))}

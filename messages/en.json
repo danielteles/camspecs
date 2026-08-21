@@ -42,6 +42,7 @@
       "brand": "Brand",
       "model": "Model",
       "mount": "Mount",
+      "releaseYear": "Release year",
       "sensorFormat": "Sensor format",
       "sensorSize": "Sensor size",
       "cropFactor": "Crop factor (35mm-equiv.)",
@@ -52,6 +53,16 @@
       "equivalentAperture": "35mm-equivalent aperture (DoF)",
       "diagonalFieldOfView": "Diagonal field of view"
     }
+  },
+  "ProductPage": {
+    "specsHeading": "Specifications",
+    "compareCta": "Add to comparison",
+    "compatibleLensesHeading": "Compatible lenses",
+    "compatibleCamerasHeading": "Compatible cameras",
+    "noCompatibleLenses": "No compatible lenses in the catalog yet.",
+    "noCompatibleCameras": "No compatible cameras in the catalog yet.",
+    "cameraMetaDescription": "{brand} {model} specs, crop factor and megapixels on CamSpecs.",
+    "lensMetaDescription": "{brand} {model} specs, 35mm-equivalent focal length and aperture on CamSpecs."
   },
   "HomePage": {
     "title": "CamSpecs",

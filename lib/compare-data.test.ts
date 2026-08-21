@@ -54,6 +54,13 @@ describe("getI18nKey", () => {
 });
 
 describe("buildComparisonRows", () => {
+  it("includes the release year for both cameras and lenses", () => {
+    const items = resolveComparisonItems(["sony-a7-iv", "sony-fe-50mm-f1-8"]);
+    const rows = buildComparisonRows(items);
+
+    expect(getRow(rows, "releaseYear").values).toEqual(["2021", "2019"]);
+  });
+
   it("computes the 35mm-equivalent focal length and aperture for a prime lens", () => {
     const items = resolveComparisonItems(["sony-a7-iv", "sony-fe-50mm-f1-8"]);
     const rows = buildComparisonRows(items);
