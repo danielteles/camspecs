@@ -135,3 +135,15 @@
     @apply font-sans;
   }
 }
+
+/*
+ * Powers the compare page's "diff only" mode: DiffToggle (a Client
+ * Component) only toggles the `data-diff` attribute on its wrapper div.
+ * The comparison table/cards themselves stay server-rendered; rows whose
+ * values are identical across every selected item are pre-marked with
+ * `data-identical` at render time and hidden here by attribute selector,
+ * with no client-side knowledge of the table's contents required.
+ */
+[data-diff] [data-identical] {
+  display: none;
+}

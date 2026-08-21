@@ -28,7 +28,30 @@
   },
   "ComparePage": {
     "title": "Comparar",
-    "description": "Busque até 4 câmeras ou lentes para comparar especificações e equivalências."
+    "description": "Busque até 4 câmeras ou lentes para comparar especificações e equivalências.",
+    "emptyState": "Busque câmeras ou lentes acima para começar a comparar.",
+    "addAnotherState": "Adicione outro item acima para ver uma comparação.",
+    "diffToggleLabel": "Ocultar especificações idênticas",
+    "notApplicable": "—",
+    "sensorFormatFullFrame": "Quadro cheio",
+    "sensorFormatApsC": "APS-C",
+    "sensorFormatMicroFourThirds": "Micro Quatro Terços",
+    "sensorFormatMediumFormat": "Médio formato",
+    "rows": {
+      "type": "Tipo",
+      "brand": "Marca",
+      "model": "Modelo",
+      "mount": "Encaixe",
+      "sensorFormat": "Formato do sensor",
+      "sensorSize": "Tamanho do sensor",
+      "cropFactor": "Fator de corte (equiv. 35mm)",
+      "megapixels": "Megapixels",
+      "focalLength": "Distância focal",
+      "maxAperture": "Abertura máxima",
+      "equivalentFocalLength": "Distância focal equivalente (35mm)",
+      "equivalentAperture": "Abertura equivalente (35mm, PdC)",
+      "diagonalFieldOfView": "Campo de visão diagonal"
+    }
   },
   "HomePage": {
     "title": "CamSpecs",

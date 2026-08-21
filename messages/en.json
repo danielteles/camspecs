@@ -28,7 +28,30 @@
   },
   "ComparePage": {
     "title": "Compare",
-    "description": "Search for up to 4 cameras or lenses to compare their specs and equivalences."
+    "description": "Search for up to 4 cameras or lenses to compare their specs and equivalences.",
+    "emptyState": "Search for cameras or lenses above to start comparing.",
+    "addAnotherState": "Add another item above to see a comparison.",
+    "diffToggleLabel": "Hide identical specs",
+    "notApplicable": "—",
+    "sensorFormatFullFrame": "Full-frame",
+    "sensorFormatApsC": "APS-C",
+    "sensorFormatMicroFourThirds": "Micro Four Thirds",
+    "sensorFormatMediumFormat": "Medium format",
+    "rows": {
+      "type": "Type",
+      "brand": "Brand",
+      "model": "Model",
+      "mount": "Mount",
+      "sensorFormat": "Sensor format",
+      "sensorSize": "Sensor size",
+      "cropFactor": "Crop factor (35mm-equiv.)",
+      "megapixels": "Megapixels",
+      "focalLength": "Focal length",
+      "maxAperture": "Max aperture",
+      "equivalentFocalLength": "35mm-equivalent focal length",
+      "equivalentAperture": "35mm-equivalent aperture (DoF)",
+      "diagonalFieldOfView": "Diagonal field of view"
+    }
   },
   "HomePage": {
     "title": "CamSpecs",

@@ -2,14 +2,125 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Suspense } from "react";
 
 import { CompareSelector } from "@/components/compare-selector";
+import { DiffToggle } from "@/components/diff-toggle";
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  buildComparisonRows,
+  getI18nKey,
+  resolveComparisonItems,
+  type ComparisonRow,
+} from "@/lib/compare-data";
+import { COMPARE_ITEMS_PARAM, parseCompareItems } from "@/lib/compare-params";
+
+type Translator = Awaited<ReturnType<typeof getTranslations>>;
+
+function formatValue(value: string | null, t: Translator): string {
+  if (value === null) {
+    return t("ComparePage.notApplicable");
+  }
+  const i18nKey = getI18nKey(value);
+  return i18nKey ? t(i18nKey) : value;
+}
 
 export default async function ComparePage({
   params,
+  searchParams,
 }: PageProps<"/[locale]/compare">) {
   const { locale } = await params;
   setRequestLocale(locale);
 
   const t = await getTranslations("ComparePage");
+  const tGlobal = await getTranslations();
+
+  const resolvedSearchParams = await searchParams;
+  const itemsParam = resolvedSearchParams[COMPARE_ITEMS_PARAM];
+  const slugs = parseCompareItems(
+    Array.isArray(itemsParam) ? itemsParam[0] : itemsParam,
+  );
+  const items = resolveComparisonItems(slugs);
+  const rows: ComparisonRow[] = buildComparisonRows(items);
+
+  const comparisonContent = (
+    <>
+      {/* Desktop/tablet: a real table, one column per item. */}
+      <div className="hidden overflow-x-auto sm:block">
+        <Table>
+          <TableCaption className="sr-only">{t("title")}</TableCaption>
+          <TableHeader>
+            <TableRow>
+              <TableHead scope="col">
+                <span className="sr-only">{t("rows.type")}</span>
+              </TableHead>
+              {items.map((item) => (
+                <TableHead key={item.slug} scope="col">
+                  {item.brand} {item.model}
+                </TableHead>
+              ))}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.map((row) => (
+              <TableRow
+                key={row.id}
+                data-identical={row.isIdentical || undefined}
+              >
+                <TableHead scope="row" className="font-medium">
+                  {tGlobal(row.labelKey)}
+                </TableHead>
+                {row.values.map((value, index) => (
+                  <TableCell key={items[index]?.slug}>
+                    {formatValue(value, tGlobal)}
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* Mobile: one card per item, specs listed as a description list. */}
+      <div className="flex flex-col gap-6 sm:hidden">
+        {items.map((item, itemIndex) => (
+          <section
+            key={item.slug}
+            aria-labelledby={`compare-card-${item.slug}`}
+            className="border-border rounded-lg border p-4"
+          >
+            <h3
+              id={`compare-card-${item.slug}`}
+              className="text-base font-semibold"
+            >
+              {item.brand} {item.model}
+            </h3>
+            <dl className="divide-border mt-3 divide-y">
+              {rows.map((row) => (
+                <div
+                  key={row.id}
+                  data-identical={row.isIdentical || undefined}
+                  className="flex items-baseline justify-between gap-4 py-2 text-sm"
+                >
+                  <dt className="text-muted-foreground">
+                    {tGlobal(row.labelKey)}
+                  </dt>
+                  <dd className="text-right font-medium">
+                    {formatValue(row.values[itemIndex] ?? null, tGlobal)}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+        ))}
+      </div>
+    </>
+  );
 
   return (
     <main
@@ -26,6 +137,23 @@ export default async function ComparePage({
       <Suspense>
         <CompareSelector />
       </Suspense>
+
+      {items.length === 0 ? (
+        <p className="text-muted-foreground text-base">{t("emptyState")}</p>
+      ) : (
+        <>
+          {items.length === 1 && (
+            <p className="text-muted-foreground text-base">
+              {t("addAnotherState")}
+            </p>
+          )}
+          {items.length >= 2 ? (
+            <DiffToggle>{comparisonContent}</DiffToggle>
+          ) : (
+            comparisonContent
+          )}
+        </>
+      )}
     </main>
   );
 }
