@@ -62,7 +62,10 @@
     "noCompatibleLenses": "Ainda não há lentes compatíveis no catálogo.",
     "noCompatibleCameras": "Ainda não há câmeras compatíveis no catálogo.",
     "cameraMetaDescription": "Especificações, fator de corte e megapixels da {brand} {model} no CamSpecs.",
-    "lensMetaDescription": "Especificações, distância focal e abertura equivalentes (35mm) da {brand} {model} no CamSpecs."
+    "lensMetaDescription": "Especificações, distância focal e abertura equivalentes (35mm) da {brand} {model} no CamSpecs.",
+    "fovHeading": "Simulador de campo de visão",
+    "horizontalFovLabel": "Campo de visão horizontal",
+    "focalLengthSliderLabel": "Distância focal: {value}mm"
   },
   "HomePage": {
     "title": "CamSpecs",

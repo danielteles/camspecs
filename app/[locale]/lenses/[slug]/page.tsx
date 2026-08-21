@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
 
+import { FieldOfViewVisualizer } from "@/components/field-of-view-visualizer";
 import { Button } from "@/components/ui/button";
 import { Link } from "@/i18n/navigation";
 import {
@@ -125,6 +126,25 @@ export default async function LensPage({
           ))}
         </dl>
       </section>
+
+      {compatibleCameras[0] && (
+        <section
+          aria-labelledby="fov-heading"
+          className="flex flex-col items-center gap-4"
+        >
+          <h2
+            id="fov-heading"
+            className="self-start text-xl font-semibold tracking-tight"
+          >
+            {tProduct("fovHeading")}
+          </h2>
+          <FieldOfViewVisualizer
+            minFocalLengthMm={item.minFocalLengthMm}
+            maxFocalLengthMm={item.maxFocalLengthMm}
+            sensor={compatibleCameras[0].sensor}
+          />
+        </section>
+      )}
 
       <section
         aria-labelledby="compatible-cameras-heading"

@@ -62,7 +62,10 @@
     "noCompatibleLenses": "No compatible lenses in the catalog yet.",
     "noCompatibleCameras": "No compatible cameras in the catalog yet.",
     "cameraMetaDescription": "{brand} {model} specs, crop factor and megapixels on CamSpecs.",
-    "lensMetaDescription": "{brand} {model} specs, 35mm-equivalent focal length and aperture on CamSpecs."
+    "lensMetaDescription": "{brand} {model} specs, 35mm-equivalent focal length and aperture on CamSpecs.",
+    "fovHeading": "Field of view simulator",
+    "horizontalFovLabel": "Horizontal field of view",
+    "focalLengthSliderLabel": "Focal length: {value}mm"
   },
   "HomePage": {
     "title": "CamSpecs",
