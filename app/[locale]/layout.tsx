@@ -4,6 +4,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Geist, Geist_Mono } from "next/font/google";
 import { notFound } from "next/navigation";
 
+import { Footer } from "@/components/footer";
 import { Navbar } from "@/components/navbar";
 import { routing } from "@/i18n/routing";
 import { SITE_URL } from "@/lib/site-config";
@@ -67,6 +68,7 @@ export default async function LocaleLayout({
         <NextIntlClientProvider>
           <Navbar />
           {children}
+          <Footer />
         </NextIntlClientProvider>
       </body>
     </html>

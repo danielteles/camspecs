@@ -23,7 +23,14 @@
     "camerasLink": "Câmeras",
     "lensesLink": "Lentes",
     "openMenu": "Abrir menu",
-    "closeMenu": "Fechar menu"
+    "closeMenu": "Fechar menu",
+    "breadcrumbLabel": "Trilha de navegação"
+  },
+  "Footer": {
+    "catalogsHeading": "Catálogos",
+    "popularComparisonsHeading": "Comparações populares",
+    "moreHeading": "Mais",
+    "githubLink": "Repositório no GitHub"
   },
   "Catalog": {
     "allFilter": "Todos",

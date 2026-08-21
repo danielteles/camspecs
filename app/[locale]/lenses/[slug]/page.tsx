@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
 
+import { Breadcrumb } from "@/components/breadcrumb";
 import { FieldOfViewVisualizer } from "@/components/field-of-view-visualizer";
 import { Button } from "@/components/ui/button";
 import { Link } from "@/i18n/navigation";
@@ -78,6 +79,7 @@ export default async function LensPage({
   ).filter((row): row is ComparisonRow => row !== undefined);
 
   const t = await getTranslations();
+  const tCommon = await getTranslations("Common");
   const tProduct = await getTranslations("ProductPage");
   const compatibleCameras = CAMERAS.filter(
     (camera) => camera.mount === item.mount,
@@ -86,8 +88,17 @@ export default async function LensPage({
   return (
     <main
       id="main-content"
-      className="mx-auto flex w-full max-w-3xl flex-col gap-8 px-4 py-10 sm:px-6 lg:px-8"
+      className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-4 py-10 sm:px-6 lg:px-8"
     >
+      <Breadcrumb
+        label={tCommon("breadcrumbLabel")}
+        items={[
+          { label: tCommon("homeLink"), href: "/" },
+          { label: tCommon("lensesLink"), href: "/lenses" },
+          { label: `${item.brand} ${item.model}` },
+        ]}
+      />
+
       <div className="flex flex-col gap-2">
         <p className="text-muted-foreground text-sm">
           {MOUNTS[item.mount].name}
