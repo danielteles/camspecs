@@ -7,17 +7,18 @@ behind the code, and the reasons for them.
 
 ## Stack
 
-| Concern              | Choice                                                      |
-| -------------------- | ----------------------------------------------------------- |
-| Framework            | Next.js 16 (App Router, Turbopack)                          |
-| Language             | TypeScript, `strict: true`                                  |
-| UI runtime           | React 19                                                    |
-| Styling              | Tailwind CSS v4 (CSS-first config, no `tailwind.config.js`) |
-| Component primitives | shadcn/ui on **Radix UI** + `cmdk`                          |
-| i18n                 | next-intl (`en`, `pt-BR`)                                   |
-| Testing              | Vitest                                                      |
-| Git hooks            | Husky                                                       |
-| CI                   | GitHub Actions                                              |
+| Concern              | Choice                                                         |
+| -------------------- | -------------------------------------------------------------- |
+| Framework            | Next.js 16 (App Router, Turbopack)                             |
+| Language             | TypeScript, `strict: true`                                     |
+| UI runtime           | React 19                                                       |
+| Styling              | Tailwind CSS v4 (CSS-first config, no `tailwind.config.js`)    |
+| Component primitives | shadcn/ui on **Radix UI** + `cmdk`                             |
+| i18n                 | next-intl (`en`, `pt-BR`)                                      |
+| Testing              | Vitest                                                         |
+| Git hooks            | Husky                                                          |
+| CI                   | GitHub Actions                                                 |
+| Data pipeline        | Python (`scripts/scraper/`) — Pydantic, SQLAlchemy, Playwright |
 
 ### A note on Next.js 16
 
@@ -195,6 +196,41 @@ One function, `buildComparisonRows`, feeds five places in the app:
 `formatRowValue` and `getFormattedRowValue` share the translation logic
 across all five places.
 
+## Scraper pipeline
+
+`scripts/scraper/` holds a separate Python system. It fetches camera and
+lens data from external sources, and stores clean records in a Postgres
+database. This system is the planned real data source for the app, in
+place of the static catalog in `lib/mock-data.ts`. See
+`scripts/scraper/README.md` for setup and usage.
+
+The pipeline has five stages, in `main.py`: fetch, merge, validate,
+upsert, and revalidate. Two extractors run in the fetch stage today: a
+Wikidata SPARQL query, and a Playwright scraper for Nikon's product
+pages.
+
+`merger.py` combines records for the same item, from each source, into
+one record. A manufacturer record wins a conflict over a Wikidata record.
+An empty field on the winning record fills in from the other source.
+
+The upsert stage writes each record to Postgres, through SQLAlchemy and
+asyncpg. A new item inserts as a new row. An existing item updates only
+its empty columns. A later scrape never overwrites a value that a
+person, or an earlier scrape, already validated.
+
+The final stage calls a new API route, `POST /api/revalidate`
+(`app/api/revalidate/route.ts`). This route checks a shared secret, then
+clears the ISR cache for each camera and lens page the pipeline touched.
+Without this call, a change waits for the existing 1-hour `revalidate`
+window to expire on its own.
+
+`.github/workflows/scraper.yml` runs the pipeline on a schedule, and on a
+manual trigger with a dry-run option.
+
+The app's data layer must still switch from `lib/mock-data.ts` to
+Postgres. This remains open, and appears again in Known limitations
+below.
+
 ## Math engine
 
 `lib/equivalence.ts` computes crop factor, 35mm-equivalent focal length
@@ -301,13 +337,18 @@ the way it catches a broken `getCropFactor`.
   does the build check instead.
 - **CI**, in `.github/workflows/ci.yml`. CI runs the same checks, plus
   `next build`, on each pull request, and on each push to `main`.
+- **Scraper CI**, in `.github/workflows/scraper.yml`. This workflow runs
+  the Python pipeline in `scripts/scraper/`, on a schedule, and on a
+  manual trigger with a dry-run option.
 
 ## Known limitations, and what a production version needs
 
 This is a PoC, with a hand-written catalog in memory. A production
 version needs each item in this list:
 
-- The project needs a real data source, instead of `lib/mock-data.ts`.
+- The project needs to wire the app's data layer to the new scraper
+  pipeline's Postgres database, in place of `lib/mock-data.ts`. See
+  Scraper pipeline above.
 - The project needs automated UI and end-to-end tests.
 - The project needs a `sitemap.xml` file.
 - The project needs a browse page for the catalog. Today, a user reaches
