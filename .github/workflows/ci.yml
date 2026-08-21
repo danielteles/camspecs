@@ -20,6 +20,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # Full history so the "changed files" diff below can reach the
+          # PR base / previous push, not just the latest commit.
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -39,8 +43,26 @@ jobs:
       - name: Format check
         run: npm run format:check
 
+      - name: Determine base ref for changed-file detection
+        id: base-ref
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "sha=${{ github.event.pull_request.base.sha }}" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event_name }}" = "push" ] && [ "${{ github.event.before }}" != "0000000000000000000000000000000000000000" ]; then
+            echo "sha=${{ github.event.before }}" >> "$GITHUB_OUTPUT"
+          else
+            # workflow_dispatch, or a push with no known previous commit
+            # (e.g. a brand-new branch) — fall back to the full suite.
+            echo "sha=" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Unit tests
-        run: npm run test
+        run: |
+          if [ -n "${{ steps.base-ref.outputs.sha }}" ]; then
+            node scripts/run-related-tests.mjs --base "${{ steps.base-ref.outputs.sha }}"
+          else
+            npm run test
+          fi
 
       - name: Production build
         run: npm run build

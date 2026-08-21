@@ -13,7 +13,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "test:related": "node scripts/run-related-tests.mjs",
     "validate": "npm run typecheck && npm run lint && npm run format:check && npm run test",
+    "validate:staged": "npm run typecheck && npm run lint && npm run format:check && npm run test:related",
     "prepare": "husky"
   },
   "dependencies": {
