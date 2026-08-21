@@ -1,0 +1,57 @@
+name: Scraper
+
+on:
+  schedule:
+    # 1st of every odd month (bi-monthly) at 06:00 UTC.
+    - cron: "0 6 1 1-12/2 *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Fetch/merge/validate only — skip DB upsert and cache revalidation"
+        type: boolean
+        default: false
+
+concurrency:
+  group: scraper-${{ github.workflow }}
+  # A scheduled/manual scrape write shouldn't be killed mid-run by a newer
+  # trigger the way a superseded PR build should — queue instead of cancel.
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  scrape:
+    name: Fetch, merge, and sync camera/lens specs
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: scripts/scraper
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: scripts/scraper/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Install Playwright Chromium
+        run: playwright install --with-deps chromium
+
+      - name: Run pipeline
+        env:
+          # Configure these under Settings -> Secrets and variables -> Actions.
+          # Until DATABASE_URL is set, use workflow_dispatch with dry_run=true —
+          # that path never touches the DB or the revalidation endpoint.
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          REVALIDATION_SECRET: ${{ secrets.REVALIDATION_SECRET }}
+          SITE_URL: ${{ vars.SITE_URL }}
+        run: |
+          python main.py ${{ inputs.dry_run == true && '--dry-run' || '' }}
