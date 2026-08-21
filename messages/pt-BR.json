@@ -10,7 +10,25 @@
     "description": "Compare câmeras e lentes entre formatos de sensor com uma calculadora de equivalência dinâmica."
   },
   "Common": {
-    "siteName": "CamSpecs"
+    "siteName": "CamSpecs",
+    "primaryNavLabel": "Principal",
+    "compareLink": "Comparar"
+  },
+  "CompareSelector": {
+    "triggerLabel": "Adicionar uma câmera ou lente…",
+    "ariaLabel": "Buscar câmeras e lentes",
+    "placeholder": "Buscar por marca ou modelo…",
+    "empty": "Nenhum resultado encontrado.",
+    "searching": "Buscando…",
+    "maxReached": "Você pode comparar até {max} itens. Remova um para adicionar outro.",
+    "selectedLabel": "Itens para comparar",
+    "removeItem": "Remover {item} da comparação",
+    "typeCamera": "Câmera",
+    "typeLens": "Lente"
+  },
+  "ComparePage": {
+    "title": "Comparar",
+    "description": "Busque até 4 câmeras ou lentes para comparar especificações e equivalências."
   },
   "HomePage": {
     "title": "CamSpecs",

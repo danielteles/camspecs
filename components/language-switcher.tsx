@@ -1,6 +1,8 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Link, usePathname } from "@/i18n/navigation";
@@ -12,7 +14,7 @@ function getLanguageAutonym(locale: string): string {
   );
 }
 
-export function LanguageSwitcher() {
+function LocaleLinks({ queryString }: { queryString: string }) {
   const pathname = usePathname();
   const activeLocale = useLocale();
   const t = useTranslations("LanguageSwitcher");
@@ -22,6 +24,12 @@ export function LanguageSwitcher() {
       <ul className="flex items-center gap-1">
         {routing.locales.map((locale) => {
           const isActive = locale === activeLocale;
+          const href = queryString
+            ? {
+                pathname,
+                query: Object.fromEntries(new URLSearchParams(queryString)),
+              }
+            : { pathname };
 
           return (
             <li key={locale}>
@@ -31,7 +39,7 @@ export function LanguageSwitcher() {
                 size="sm"
                 aria-current={isActive ? "true" : undefined}
               >
-                <Link href={pathname} locale={locale} hrefLang={locale}>
+                <Link href={href} locale={locale} hrefLang={locale}>
                   {getLanguageAutonym(locale)}
                 </Link>
               </Button>
@@ -40,5 +48,22 @@ export function LanguageSwitcher() {
         })}
       </ul>
     </nav>
+  );
+}
+
+// Reads the current query string so switching locales preserves state that
+// lives in the URL (e.g. the /compare page's selected items). Isolated into
+// its own component because `useSearchParams` requires a Suspense boundary
+// to avoid opting static pages into client-side rendering.
+function LocaleLinksWithSearchParams() {
+  const searchParams = useSearchParams();
+  return <LocaleLinks queryString={searchParams.toString()} />;
+}
+
+export function LanguageSwitcher() {
+  return (
+    <Suspense fallback={<LocaleLinks queryString="" />}>
+      <LocaleLinksWithSearchParams />
+    </Suspense>
   );
 }
