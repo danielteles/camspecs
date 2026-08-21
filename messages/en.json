@@ -9,10 +9,21 @@
     "title": "CamSpecs — Camera & Lens Equivalence Calculator",
     "description": "Compare cameras and lenses across sensor formats with a dynamic equivalence calculator."
   },
+  "NotFound": {
+    "eyebrow": "404",
+    "title": "Page not found",
+    "description": "The page you're looking for doesn't exist or may have moved.",
+    "backHome": "Back to home"
+  },
   "Common": {
     "siteName": "CamSpecs",
     "primaryNavLabel": "Primary",
-    "compareLink": "Compare"
+    "homeLink": "Home",
+    "compareLink": "Compare",
+    "camerasLink": "Cameras",
+    "lensesLink": "Lenses",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu"
   },
   "CompareSelector": {
     "triggerLabel": "Add a camera or lens…",

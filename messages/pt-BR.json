@@ -9,10 +9,21 @@
     "title": "CamSpecs — Calculadora de Equivalência de Câmeras e Lentes",
     "description": "Compare câmeras e lentes entre formatos de sensor com uma calculadora de equivalência dinâmica."
   },
+  "NotFound": {
+    "eyebrow": "404",
+    "title": "Página não encontrada",
+    "description": "A página que você está procurando não existe ou pode ter sido movida.",
+    "backHome": "Voltar para o início"
+  },
   "Common": {
     "siteName": "CamSpecs",
     "primaryNavLabel": "Principal",
-    "compareLink": "Comparar"
+    "homeLink": "Início",
+    "compareLink": "Comparar",
+    "camerasLink": "Câmeras",
+    "lensesLink": "Lentes",
+    "openMenu": "Abrir menu",
+    "closeMenu": "Fechar menu"
   },
   "CompareSelector": {
     "triggerLabel": "Adicionar uma câmera ou lente…",
