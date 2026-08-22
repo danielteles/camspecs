@@ -5,16 +5,21 @@ import { OgCard } from "@/components/og-card";
 import {
   buildComparisonRows,
   getFormattedRowValue,
-  resolveComparisonItems,
+  type ComparisonItem,
 } from "@/lib/compare-data";
-import { LENSES } from "@/lib/mock-data";
+import {
+  getAllCameras,
+  getAllLenses,
+  getLensBySlug,
+} from "@/lib/services/equipment";
 
 export const alt = "Lens specifications";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-export function generateStaticParams() {
-  return LENSES.map((lens) => ({ slug: lens.slug }));
+export async function generateStaticParams() {
+  const lenses = await getAllLenses();
+  return lenses.map((lens) => ({ slug: lens.slug }));
 }
 
 export default async function Image({
@@ -25,9 +30,9 @@ export default async function Image({
   const { locale, slug } = await params;
   const t = await getTranslations({ locale });
 
-  const [item] = resolveComparisonItems([slug]);
+  const lens = await getLensBySlug(slug);
 
-  if (!item || item.type !== "lens") {
+  if (!lens) {
     return new ImageResponse(
       <OgCard
         eyebrow={t("Common.siteName")}
@@ -39,7 +44,9 @@ export default async function Image({
     );
   }
 
-  const rows = buildComparisonRows([item]);
+  const item: ComparisonItem = { type: "lens", ...lens };
+  const cameras = await getAllCameras();
+  const rows = buildComparisonRows([item], cameras);
   const value = (rowId: string) => getFormattedRowValue(rows, rowId, 0, t);
 
   return new ImageResponse(

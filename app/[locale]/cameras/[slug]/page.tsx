@@ -8,10 +8,15 @@ import { Link } from "@/i18n/navigation";
 import {
   buildComparisonRows,
   formatRowValue,
-  resolveComparisonItems,
+  type ComparisonItem,
   type ComparisonRow,
 } from "@/lib/compare-data";
-import { CAMERAS, LENSES, MOUNTS } from "@/lib/mock-data";
+import { MOUNTS } from "@/lib/mock-data";
+import {
+  getAllCameras,
+  getAllLenses,
+  getCameraBySlug,
+} from "@/lib/services/equipment";
 
 const SPEC_ROW_IDS = [
   "brand",
@@ -24,19 +29,20 @@ const SPEC_ROW_IDS = [
   "megapixels",
 ];
 
-export function generateStaticParams() {
-  return CAMERAS.map((camera) => ({ slug: camera.slug }));
+export async function generateStaticParams() {
+  const cameras = await getAllCameras();
+  return cameras.map((camera) => ({ slug: camera.slug }));
 }
 
-// Mock data never changes at runtime, but a real backend's catalog would;
-// this demonstrates the ISR revalidation window a live deployment would use.
+// Fallback for the case an on-demand revalidatePath call (triggered by the
+// scraper pipeline after an upsert, see app/api/revalidate) is missed.
 export const revalidate = 3600;
 
 export async function generateMetadata({
   params,
 }: PageProps<"/[locale]/cameras/[slug]">): Promise<Metadata> {
   const { locale, slug } = await params;
-  const camera = CAMERAS.find((c) => c.slug === slug);
+  const camera = await getCameraBySlug(slug);
   if (!camera) {
     return {};
   }
@@ -68,10 +74,11 @@ export default async function CameraPage({
   const { locale, slug } = await params;
   setRequestLocale(locale);
 
-  const [item] = resolveComparisonItems([slug]);
-  if (!item || item.type !== "camera") {
+  const camera = await getCameraBySlug(slug);
+  if (!camera) {
     notFound();
   }
+  const item: ComparisonItem = { type: "camera", ...camera };
 
   const rows = buildComparisonRows([item]);
   const specRows = SPEC_ROW_IDS.map((id) =>
@@ -81,7 +88,8 @@ export default async function CameraPage({
   const t = await getTranslations();
   const tCommon = await getTranslations("Common");
   const tProduct = await getTranslations("ProductPage");
-  const compatibleLenses = LENSES.filter((lens) => lens.mount === item.mount);
+  const lenses = await getAllLenses();
+  const compatibleLenses = lenses.filter((lens) => lens.mount === item.mount);
 
   return (
     <main
