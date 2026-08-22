@@ -31,10 +31,33 @@ DEFAULT_NIKON_URLS = [
     "https://www.nikonusa.com/p/z50ii/2044/overview",
 ]
 
+# Wikidata QIDs for the cameras at each Nikon URL above, verified live —
+# used only to backfill release_year (see fetch_all below and
+# wikidata.fetch_release_year's docstring for why the general Wikidata
+# camera crawl can't reach these two items itself: neither has a P2935
+# mount statement on Wikidata, so they fail that query's required join).
+NIKON_WIKIDATA_QIDS = {
+    "https://www.nikonusa.com/p/z6iii/1890/overview": "Q126959969",
+    "https://www.nikonusa.com/p/z50ii/2044/overview": "Q131199641",
+}
+
+# Slugs verified live against versus.com (see extractors/versus.py's own
+# note on verifying rather than guessing slugs). Wikidata's sensor_format is
+# always "other" (no populated property for it) and only gets backfilled by
+# whichever of these cameras also happens to come back from Wikidata's
+# recency-ordered crawl — so this list is deliberately broader than the 3
+# original entries to raise that overlap across all 4 manufacturer-scraped
+# mounts (Sony E, Canon RF, Nikon Z, Fujifilm X).
 DEFAULT_VERSUS_CAMERA_SLUGS = [
     "sony-alpha-7-iv",
+    "sony-alpha-6700",
     "canon-eos-r6-mark-ii",
+    "canon-eos-r8",
+    "canon-eos-r5",
+    "nikon-z6-iii",
+    "nikon-zf",
     "fujifilm-x-t5",
+    "fujifilm-x-t50",
 ]
 
 # Versus.com has no standalone lens pages — every lens slug is a "camera +
@@ -85,11 +108,24 @@ async def fetch_all(
 
     for url in nikon_urls:
         try:
-            cameras.append(await nikon.fetch_camera(url))
+            camera = await nikon.fetch_camera(url)
         except Exception:
             # One manufacturer page changing layout shouldn't take down a
             # pipeline run that's otherwise fine — log and keep going.
             logger.exception("Skipping Nikon URL after repeated failures: %s", url)
+            continue
+
+        qid = NIKON_WIKIDATA_QIDS.get(url)
+        if camera.release_year is None and qid:
+            try:
+                async with httpx.AsyncClient(
+                    headers={"User-Agent": wikidata.USER_AGENT}, timeout=wikidata.REQUEST_TIMEOUT_S
+                ) as wikidata_client:
+                    camera.release_year = await wikidata.fetch_release_year(wikidata_client, qid)
+            except Exception:
+                logger.warning("Could not backfill release_year for %s from Wikidata", url)
+
+        cameras.append(camera)
 
     for slug in versus_camera_slugs:
         try:

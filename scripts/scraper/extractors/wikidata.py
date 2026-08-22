@@ -33,25 +33,59 @@ LENS_MODEL_QID = "Q109672300"  # "lens model"
 
 # P2935 ("connector") is a generic "physical connectors this device has"
 # property — on real camera items it also picks up HDMI/USB ports, not just
-# the lens mount. Constraining the value to the "lens mount" (Q205722)
-# subclass tree via P279* is what filters those false positives out.
-LENS_MOUNT_CLASS_QID = "Q205722"
+# the lens mount. An earlier version of this query constrained it to the
+# generic "lens mount" (Q205722) subclass tree via P279*, which filtered out
+# non-mount connectors but let through every lens mount ever made, including
+# legacy DSLR mounts (Canon EF, etc.) the frontend's MountId type doesn't
+# support. Enumerating the exact mounts we support instead fixes both
+# problems at once: no false positives, and every row is guaranteed usable.
+# QIDs verified empirically against the live endpoint (not guessed).
+MOUNT_QIDS = {
+    "canon-rf": "Q56487870",  # Canon RF lens mount
+    "nikon-z": "Q56240413",  # Nikon Z-mount
+    "sony-e": "Q209536",  # Sony E-mount
+    "fujifilm-x": "Q209708",  # Fujifilm X-mount
+    "micro-four-thirds": "Q1366492",  # Micro Four Thirds system
+    "l-mount": "Q30242162",  # L-Mount
+}
+# The reverse lookup camera/lens bindings use to resolve a mount QID to our
+# canonical MountId slug directly, instead of running Wikidata's English
+# label ("Canon RF lens mount", "L-Mount", "Micro Four Thirds system", ...)
+# through the generic normalize_mount() regex used elsewhere in the
+# pipeline. That regex only strips the word "mount"; verified live that it
+# mangles these specific labels ("Canon RF lens mount" -> "canon-rf-lens",
+# "L-Mount" -> "l", "Micro Four Thirds system" -> "micro-four-thirds-system"
+# — none matching the app's MountId values). Since the query already
+# constrains ?mount to exactly these QIDs, resolving by QID is both exact
+# and immune to future label wording changes.
+_QID_TO_MOUNT_ID = {qid: mount_id for mount_id, qid in MOUNT_QIDS.items()}
 
 _UNRESOLVED_LABEL = re.compile(r"^Q\d+$")
 
 
+def _mount_values_clause() -> str:
+    return " ".join(f"wd:{qid}" for qid in MOUNT_QIDS.values())
+
+
 def build_camera_sparql(limit: int) -> str:
+    # Ordering by release date (falling back to announce date) so the LIMIT
+    # cutoff keeps the newest cameras rather than an arbitrary slice —
+    # otherwise Wikidata's query planner tends to surface old, low-QID items
+    # first (early-2000s DSLRs), crowding out the current mirrorless bodies
+    # this site actually covers.
     return f"""
-SELECT ?item ?itemLabel ?manufacturerLabel ?mountLabel ?mass ?pubDate ?announceDate WHERE {{
+SELECT ?item ?itemLabel ?manufacturerLabel ?mount ?mountLabel ?mass ?pubDate ?announceDate WHERE {{
   ?item wdt:P31 wd:{CAMERA_MODEL_QID};
         wdt:P176 ?manufacturer;
         wdt:P2935 ?mount.
-  ?mount wdt:P279* wd:{LENS_MOUNT_CLASS_QID}.
+  VALUES ?mount {{ {_mount_values_clause()} }}
   OPTIONAL {{ ?item wdt:P2067 ?mass. }}
   OPTIONAL {{ ?item wdt:P577 ?pubDate. }}
   OPTIONAL {{ ?item wdt:P6949 ?announceDate. }}
+  BIND(COALESCE(?pubDate, ?announceDate) AS ?date)
   SERVICE wikibase:label {{ bd:serviceParam wikibase:language "en". }}
 }}
+ORDER BY DESC(?date)
 LIMIT {limit}
 """.strip()
 
@@ -61,9 +95,12 @@ def build_lens_sparql(limit: int) -> str:
     # lenses (e.g. wide/tele focal length, wide-open/stopped-down aperture).
     # A subquery aggregates MIN/MAX per item *before* joining labels, since
     # combining SERVICE wikibase:label with GROUP BY in a single scope
-    # doesn't reliably group the label variables.
+    # doesn't reliably group the label variables. The subquery has no LIMIT
+    # of its own — mount-filtering and recency-ordering happen in the outer
+    # scope, so a limit here would truncate candidates before either applies
+    # (verified live: the unlimited aggregation still completes in ~1s).
     return f"""
-SELECT ?item ?itemLabel ?manufacturerLabel ?mountLabel
+SELECT ?item ?itemLabel ?manufacturerLabel ?mount ?mountLabel
        ?minFocalLength ?maxFocalLength ?minAperture ?maxAperture
        ?mass ?pubDate ?announceDate WHERE {{
   {{
@@ -75,16 +112,18 @@ SELECT ?item ?itemLabel ?manufacturerLabel ?mountLabel
             wdt:P7863 ?ap.
     }}
     GROUP BY ?item
-    LIMIT {limit}
   }}
   ?item wdt:P176 ?manufacturer;
         wdt:P2935 ?mount.
-  ?mount wdt:P279* wd:{LENS_MOUNT_CLASS_QID}.
+  VALUES ?mount {{ {_mount_values_clause()} }}
   OPTIONAL {{ ?item wdt:P2067 ?mass. }}
   OPTIONAL {{ ?item wdt:P577 ?pubDate. }}
   OPTIONAL {{ ?item wdt:P6949 ?announceDate. }}
+  BIND(COALESCE(?pubDate, ?announceDate) AS ?date)
   SERVICE wikibase:label {{ bd:serviceParam wikibase:language "en". }}
 }}
+ORDER BY DESC(?date)
+LIMIT {limit}
 """.strip()
 
 
@@ -146,13 +185,27 @@ def _parse_release_year(binding: dict[str, Any]) -> int | None:
     return None
 
 
+def _resolve_mount_id(binding: dict[str, Any]) -> str | None:
+    """Resolves a binding's ?mount QID to our canonical MountId slug.
+
+    The VALUES clause in both SPARQL queries constrains ?mount to exactly
+    the QIDs in MOUNT_QIDS, so this should never miss — but falls back to
+    None (dropping the record) rather than a fragile label-based guess if a
+    future query change lets an unmapped QID through.
+    """
+    mount_value = _binding_value(binding, "mount")
+    if not mount_value:
+        return None
+    return _QID_TO_MOUNT_ID.get(_extract_qid(mount_value))
+
+
 def _map_camera_binding(binding: dict[str, Any]) -> dict[str, Any] | None:
     model_label = _binding_value(binding, "itemLabel")
     brand = _binding_value(binding, "manufacturerLabel")
-    mount = _binding_value(binding, "mountLabel")
+    mount = _resolve_mount_id(binding)
     if not model_label or not brand or not mount:
         return None
-    if any(_is_unresolved_label(v) for v in (model_label, brand, mount)):
+    if any(_is_unresolved_label(v) for v in (model_label, brand)):
         return None
 
     qid = _extract_qid(binding["item"]["value"])
@@ -175,14 +228,14 @@ def _map_camera_binding(binding: dict[str, Any]) -> dict[str, Any] | None:
 def _map_lens_binding(binding: dict[str, Any]) -> dict[str, Any] | None:
     model_label = _binding_value(binding, "itemLabel")
     brand = _binding_value(binding, "manufacturerLabel")
-    mount = _binding_value(binding, "mountLabel")
+    mount = _resolve_mount_id(binding)
     min_fl = _binding_value(binding, "minFocalLength")
     max_fl = _binding_value(binding, "maxFocalLength")
     min_ap = _binding_value(binding, "minAperture")
     max_ap = _binding_value(binding, "maxAperture")
     if not model_label or not brand or not mount:
         return None
-    if any(_is_unresolved_label(v) for v in (model_label, brand, mount)):
+    if any(_is_unresolved_label(v) for v in (model_label, brand)):
         return None
     if None in (min_fl, max_fl, min_ap, max_ap):
         return None
@@ -255,6 +308,31 @@ async def fetch_lenses(client: httpx.AsyncClient, limit: int = 25) -> list[LensS
 
     logger.info("Wikidata lenses: %d validated, %d skipped", len(results), skipped)
     return results
+
+
+async def fetch_release_year(client: httpx.AsyncClient, qid: str) -> int | None:
+    """Looks up a single Wikidata item's release year directly by QID.
+
+    Manufacturer-scraped cameras sometimes lack a release date on their own
+    product page (verified live: Nikon USA's "Tech Specs" tab has none) but
+    the item's Wikidata entry has one — the general camera crawl above can't
+    reach it via the merge step, though, because some recent camera items
+    (e.g. Nikon Z6III, Z50II — checked directly) simply have no P2935 (lens
+    mount) statement on Wikidata yet, so they fail the required mount join
+    build_camera_sparql relies on. This bypasses that join entirely: no
+    mount needed, just the one fact this call exists to backfill.
+    """
+    query = f"""
+SELECT ?pubDate ?announceDate WHERE {{
+  OPTIONAL {{ wd:{qid} wdt:P577 ?pubDate. }}
+  OPTIONAL {{ wd:{qid} wdt:P6949 ?announceDate. }}
+}}
+""".strip()
+    payload = await _execute_sparql(client, query)
+    bindings = payload["results"]["bindings"]
+    if not bindings:
+        return None
+    return _parse_release_year(bindings[0])
 
 
 async def _run(entity_type: str, limit: int) -> None:
