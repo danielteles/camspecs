@@ -1,9 +1,11 @@
 """Multi-source merger for CameraSpecs / LensSpecs records.
 
-Manufacturer-scraped records are treated as authoritative; other sources
-(currently just Wikidata) backfill whatever fields the manufacturer page
-left null. Works generically on either model type since both are validated
-Pydantic models with a `brand`/`model`/`mount`/`source` shape.
+Manufacturer-scraped records are treated as authoritative. Versus.com backs
+them up next, then Wikidata: each lower-priority source backfills whatever
+fields the higher-priority ones left null, and is itself overridden wherever
+a higher-priority source has a value. Works generically on either model type
+since both are validated Pydantic models with a `brand`/`model`/`mount`/
+`source` shape.
 """
 
 from __future__ import annotations
@@ -24,10 +26,22 @@ _PROVENANCE_FIELDS = frozenset({"source", "source_url", "scraped_at", "slug"})
 _NON_ALNUM = re.compile(r"[^a-z0-9]")
 
 
+# Non-manufacturer sources ranked lower-wins-first, per the priority
+# hierarchy: Official Manufacturer > Versus.com > Wikidata. Anything not
+# listed here (i.e. not yet a known source) sorts after all of these rather
+# than silently outranking Wikidata.
+_SOURCE_PRIORITY = {
+    "versus": 1,
+    "wikidata": 2,
+}
+
+
 def _source_priority(source: str) -> int:
     # Lower sorts first = wins conflicts. Manufacturer-prefixed sources
     # (e.g. "manufacturer:nikon") outrank everything else.
-    return 0 if source.startswith("manufacturer:") else 1
+    if source.startswith("manufacturer:"):
+        return 0
+    return _SOURCE_PRIORITY.get(source, len(_SOURCE_PRIORITY) + 1)
 
 
 def merge_key(brand: str, model: str, mount: str) -> str:

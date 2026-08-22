@@ -51,6 +51,47 @@ CAMERA_UNRELATED = {
     "source_url": "https://www.wikidata.org/wiki/Q999002",
 }
 
+# --- A three-source case (manufacturer + Versus.com + Wikidata) for the
+# same physical camera, exercising the full priority chain: Official
+# Manufacturer > Versus.com > Wikidata. Deliberately listed out of priority
+# order below to prove the merge sorts by priority rather than trusting
+# input order. ---
+
+PANASONIC_MANUFACTURER = {
+    "brand": "Panasonic",
+    "model": "Lumix S5 II",
+    "mount": "L-Mount",
+    "sensor_format": "full-frame",
+    "megapixels": 24.2,
+    "weight_g": 740,  # authoritative; Versus's conflicting 739g must lose
+    "source": "manufacturer:panasonic",
+    "source_url": "https://www.panasonic.com/lumix-s5-ii",
+}
+
+PANASONIC_VERSUS = {
+    "brand": "Panasonic",
+    "model": "Lumix S5 II",
+    "mount": "L-Mount",
+    "sensor_format": "full-frame",
+    "weight_g": 739,  # conflicts with manufacturer — manufacturer must win
+    "release_year": 2023,  # correct; must win over Wikidata's conflicting 2022
+    "video_formats": ["5.9K", "4K60p"],  # must win over Wikidata's conflicting list
+    "source": "versus",
+    "source_url": "https://versus.com/en/panasonic-lumix-s5-ii",
+}
+
+PANASONIC_WIKIDATA = {
+    "brand": "Panasonic",
+    "model": "Lumix S5 II",
+    "mount": "L-Mount",
+    "sensor_format": "other",  # must lose to manufacturer's "full-frame"
+    "release_year": 2022,  # must lose to Versus's 2023 (Versus outranks Wikidata)
+    "video_formats": ["4K"],  # must lose to Versus's list
+    "crop_factor": 1.0,  # neither other source has this — must still backfill
+    "source": "wikidata",
+    "source_url": "https://www.wikidata.org/wiki/Q999004",
+}
+
 # --- Lenses: same idea, with an en-dash vs hyphen difference in the model
 # name on top of the casing difference. ---
 
@@ -107,6 +148,30 @@ def main() -> None:
     r50 = next(c for c in merged_cameras if c.slug == "canon-eos-r50")
     assert r50.source == "wikidata", "unrelated single-source camera must pass through unchanged"
     print("OK  camera merge assertions passed\n")
+
+    print("=== Merging cameras across three sources (priority chain) ===")
+    # Listed Wikidata-first, Manufacturer-last to prove the merge sorts by
+    # priority rather than by input order.
+    raw_panasonic = [
+        CameraSpecs.model_validate(PANASONIC_WIKIDATA),
+        CameraSpecs.model_validate(PANASONIC_VERSUS),
+        CameraSpecs.model_validate(PANASONIC_MANUFACTURER),
+    ]
+    merged_panasonic = merge_records(raw_panasonic)
+    assert len(merged_panasonic) == 1, "all three records must dedupe into one camera"
+    s5ii = merged_panasonic[0]
+    pprint(s5ii.model_dump())
+    print()
+
+    assert s5ii.weight_g == 740, "manufacturer weight must win over both Versus and Wikidata"
+    assert s5ii.sensor_format == "full-frame", "manufacturer sensor_format must win over Wikidata"
+    assert s5ii.release_year == 2023, "Versus's release_year must win over Wikidata's conflicting value"
+    assert s5ii.video_formats == ["5.9K", "4K60p"], "Versus's video_formats must win over Wikidata's"
+    assert s5ii.crop_factor == 1.0, "Wikidata must still backfill a field neither other source has"
+    assert s5ii.source == "manufacturer:panasonic+versus+wikidata", (
+        "merged source must list all three contributors, in priority order"
+    )
+    print("OK  three-source priority chain assertions passed\n")
 
     print("=== Merging lenses ===")
     raw_lenses = [
