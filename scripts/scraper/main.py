@@ -19,7 +19,7 @@ from dotenv import load_dotenv
 from db.connection import dispose_engine, get_engine, get_session_factory
 from db.schema import create_all
 from db.upsert import upsert_cameras, upsert_lenses
-from extractors import nikon, wikidata
+from extractors import nikon, versus, wikidata
 from models import CameraSpecs, LensSpecs
 from transformers.merger import merge_records
 
@@ -29,6 +29,20 @@ logger = logging.getLogger(__name__)
 DEFAULT_NIKON_URLS = [
     "https://www.nikonusa.com/p/z6iii/1890/overview",
     "https://www.nikonusa.com/p/z50ii/2044/overview",
+]
+
+DEFAULT_VERSUS_CAMERA_SLUGS = [
+    "sony-alpha-7-iv",
+    "canon-eos-r6-mark-ii",
+    "fujifilm-x-t5",
+]
+
+# Versus.com has no standalone lens pages — every lens slug is a "camera +
+# lens" kit (see extractors/versus.py). Each entry here is scraped for its
+# lens half only; the camera half is already covered by
+# DEFAULT_VERSUS_CAMERA_SLUGS / DEFAULT_NIKON_URLS.
+DEFAULT_VERSUS_LENS_SLUGS = [
+    "sony-alpha-7-iv-sony-fe-50mm-f1-8",
 ]
 
 
@@ -51,7 +65,10 @@ class Timer:
 
 
 async def fetch_all(
-    wikidata_limit: int, nikon_urls: list[str]
+    wikidata_limit: int,
+    nikon_urls: list[str],
+    versus_camera_slugs: list[str],
+    versus_lens_slugs: list[str],
 ) -> tuple[list[CameraSpecs], list[LensSpecs]]:
     cameras: list[CameraSpecs] = []
     lenses: list[LensSpecs] = []
@@ -73,6 +90,21 @@ async def fetch_all(
             # One manufacturer page changing layout shouldn't take down a
             # pipeline run that's otherwise fine — log and keep going.
             logger.exception("Skipping Nikon URL after repeated failures: %s", url)
+
+    for slug in versus_camera_slugs:
+        try:
+            cameras.append(await versus.fetch_camera(slug))
+        except Exception:
+            # Same reasoning as the Nikon loop above — a WAF challenge that
+            # didn't resolve or a page-layout change for one slug shouldn't
+            # take down the rest of the fetch phase.
+            logger.exception("Skipping Versus camera slug after repeated failures: %s", slug)
+
+    for slug in versus_lens_slugs:
+        try:
+            lenses.append(await versus.fetch_lens(slug))
+        except Exception:
+            logger.exception("Skipping Versus lens slug after repeated failures: %s", slug)
 
     return cameras, lenses
 
@@ -98,7 +130,9 @@ async def run_pipeline(args: argparse.Namespace) -> None:
     pipeline_start = time.perf_counter()
 
     with Timer("Fetch") as t_fetch:
-        raw_cameras, raw_lenses = await fetch_all(args.wikidata_limit, args.nikon_urls)
+        raw_cameras, raw_lenses = await fetch_all(
+            args.wikidata_limit, args.nikon_urls, args.versus_camera_slugs, args.versus_lens_slugs
+        )
     logger.info(
         "Fetched %d raw camera record(s), %d raw lens record(s)", len(raw_cameras), len(raw_lenses)
     )
@@ -167,6 +201,18 @@ def main() -> None:
         nargs="*",
         default=DEFAULT_NIKON_URLS,
         help="Nikon USA product page URLs to scrape",
+    )
+    parser.add_argument(
+        "--versus-camera-slugs",
+        nargs="*",
+        default=DEFAULT_VERSUS_CAMERA_SLUGS,
+        help="Versus.com camera product slugs to scrape",
+    )
+    parser.add_argument(
+        "--versus-lens-slugs",
+        nargs="*",
+        default=DEFAULT_VERSUS_LENS_SLUGS,
+        help="Versus.com 'camera + lens' kit slugs to scrape for their lens half",
     )
     parser.add_argument(
         "--site-url",
