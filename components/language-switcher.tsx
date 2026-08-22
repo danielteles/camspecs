@@ -9,9 +9,10 @@ import { Link, usePathname } from "@/i18n/navigation";
 import { routing } from "@/i18n/routing";
 
 function getLanguageAutonym(locale: string): string {
-  return (
-    new Intl.DisplayNames([locale], { type: "language" }).of(locale) ?? locale
-  );
+  const name =
+    new Intl.DisplayNames([locale], { type: "language" }).of(locale) ?? locale;
+  const [languageName] = name.split(" (");
+  return languageName.charAt(0).toUpperCase() + languageName.slice(1);
 }
 
 function LocaleLinks({ queryString }: { queryString: string }) {

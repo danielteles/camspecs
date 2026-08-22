@@ -56,18 +56,28 @@ export function getI18nKey(value: string): string | undefined {
   return value.startsWith("i18n:") ? value.slice("i18n:".length) : undefined;
 }
 
-const SENSOR_FORMAT_KEYS: Record<SensorFormat, string> = {
+export const SENSOR_FORMAT_KEYS: Record<SensorFormat, string> = {
   "full-frame": "ComparePage.sensorFormatFullFrame",
   "aps-c": "ComparePage.sensorFormatApsC",
   "micro-four-thirds": "ComparePage.sensorFormatMicroFourThirds",
   "medium-format": "ComparePage.sensorFormatMediumFormat",
 };
 
+export const SENSOR_FORMAT_BADGE_VARIANT: Record<
+  SensorFormat,
+  "default" | "secondary" | "outline"
+> = {
+  "full-frame": "default",
+  "aps-c": "secondary",
+  "micro-four-thirds": "outline",
+  "medium-format": "outline",
+};
+
 function formatCropFactor(cropFactor: number): string {
   return `${cropFactor.toFixed(2)}×`;
 }
 
-function formatAperture(aperture: number): string {
+export function formatAperture(aperture: number): string {
   return `ƒ/${aperture.toFixed(1)}`;
 }
 
@@ -75,7 +85,7 @@ function formatFocalLength(mm: number): string {
   return `${Math.round(mm)}mm`;
 }
 
-function formatFocalLengthRange(minMm: number, maxMm: number): string {
+export function formatFocalLengthRange(minMm: number, maxMm: number): string {
   return minMm === maxMm
     ? formatFocalLength(minMm)
     : `${Math.round(minMm)}–${Math.round(maxMm)}mm`;

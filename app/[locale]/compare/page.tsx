@@ -1,6 +1,7 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Suspense } from "react";
 
+import { CompareActions } from "@/components/compare-actions";
 import { CompareSelector } from "@/components/compare-selector";
 import { DiffToggle } from "@/components/diff-toggle";
 import {
@@ -124,7 +125,7 @@ export default async function ComparePage({
   return (
     <main
       id="main-content"
-      className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-10 sm:px-6 lg:px-8"
+      className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 lg:px-8"
     >
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
@@ -135,6 +136,10 @@ export default async function ComparePage({
 
       <Suspense>
         <CompareSelector />
+      </Suspense>
+
+      <Suspense>
+        <CompareActions />
       </Suspense>
 
       {items.length === 0 ? (
