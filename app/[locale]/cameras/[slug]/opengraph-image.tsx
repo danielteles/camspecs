@@ -7,6 +7,7 @@ import {
   getFormattedRowValue,
   type ComparisonItem,
 } from "@/lib/compare-data";
+import { isDatabaseConfigured } from "@/lib/db/client";
 import { getAllCameras, getCameraBySlug } from "@/lib/services/equipment";
 
 export const alt = "Camera specifications";
@@ -14,6 +15,12 @@ export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
 export async function generateStaticParams() {
+  if (!isDatabaseConfigured()) {
+    console.warn(
+      "[opengraph-image] DATABASE_URL not set — skipping static generation for camera OG images.",
+    );
+    return [];
+  }
   const cameras = await getAllCameras();
   return cameras.map((camera) => ({ slug: camera.slug }));
 }

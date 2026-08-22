@@ -20,6 +20,15 @@ function getDatabaseUrl(): string {
   return url;
 }
 
+// generateStaticParams for camera/lens routes runs at build time, before
+// any request-scoped env is guaranteed — e.g. a CI build with the DB
+// secret unset. Callers use this to skip static generation instead of
+// hard-failing the whole build; pages still render on demand at request
+// time via dynamicParams, once a real DATABASE_URL is available.
+export function isDatabaseConfigured(): boolean {
+  return Boolean(process.env.DATABASE_URL);
+}
+
 declare global {
   var __camspecsDbPool: Pool | undefined;
 }

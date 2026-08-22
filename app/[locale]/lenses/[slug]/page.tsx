@@ -13,6 +13,7 @@ import {
   type ComparisonItem,
   type ComparisonRow,
 } from "@/lib/compare-data";
+import { isDatabaseConfigured } from "@/lib/db/client";
 import { MOUNTS } from "@/lib/mounts";
 import {
   getAllCameras,
@@ -34,6 +35,12 @@ const SPEC_ROW_IDS = [
 ];
 
 export async function generateStaticParams() {
+  if (!isDatabaseConfigured()) {
+    console.warn(
+      "[lenses/[slug]] DATABASE_URL not set — skipping static generation; pages will render on demand.",
+    );
+    return [];
+  }
   const lenses = await getAllLenses();
   return lenses.map((lens) => ({ slug: lens.slug }));
 }

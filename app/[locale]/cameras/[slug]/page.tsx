@@ -12,6 +12,7 @@ import {
   type ComparisonItem,
   type ComparisonRow,
 } from "@/lib/compare-data";
+import { isDatabaseConfigured } from "@/lib/db/client";
 import { MOUNTS } from "@/lib/mounts";
 import {
   getAllCameras,
@@ -31,6 +32,12 @@ const SPEC_ROW_IDS = [
 ];
 
 export async function generateStaticParams() {
+  if (!isDatabaseConfigured()) {
+    console.warn(
+      "[cameras/[slug]] DATABASE_URL not set — skipping static generation; pages will render on demand.",
+    );
+    return [];
+  }
   const cameras = await getAllCameras();
   return cameras.map((camera) => ({ slug: camera.slug }));
 }
