@@ -1,4 +1,4 @@
-import type { ColumnType, Generated } from "kysely";
+import type { ColumnType } from "kysely";
 
 /**
  * Mirrors scripts/scraper/db/schema.py's `cameras` / `lenses` tables. The
@@ -7,6 +7,15 @@ import type { ColumnType, Generated } from "kysely";
  */
 
 type Timestamp = ColumnType<Date, string | Date, string | Date>;
+// `Generated<Timestamp>` would nest a ColumnType inside another ColumnType's
+// select-type slot — Kysely's Selectable<> only unwraps one level, so that
+// resolves to the Timestamp type itself instead of Date. Define the
+// generated (optional-on-insert) variant directly instead.
+type GeneratedTimestamp = ColumnType<
+  Date,
+  string | Date | undefined,
+  string | Date
+>;
 
 export interface CamerasTable {
   slug: string;
@@ -24,8 +33,8 @@ export interface CamerasTable {
   source: string;
   source_url: string | null;
   scraped_at: Timestamp;
-  created_at: Generated<Timestamp>;
-  updated_at: Generated<Timestamp>;
+  created_at: GeneratedTimestamp;
+  updated_at: GeneratedTimestamp;
 }
 
 export interface LensesTable {
@@ -43,8 +52,8 @@ export interface LensesTable {
   source: string;
   source_url: string | null;
   scraped_at: Timestamp;
-  created_at: Generated<Timestamp>;
-  updated_at: Generated<Timestamp>;
+  created_at: GeneratedTimestamp;
+  updated_at: GeneratedTimestamp;
 }
 
 export interface Database {

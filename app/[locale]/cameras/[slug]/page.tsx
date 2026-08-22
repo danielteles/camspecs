@@ -3,6 +3,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
 
 import { Breadcrumb } from "@/components/breadcrumb";
+import { LastUpdatedBadge } from "@/components/last-updated-badge";
 import { Button } from "@/components/ui/button";
 import { Link } from "@/i18n/navigation";
 import {
@@ -142,6 +143,7 @@ export default async function CameraPage({
             </div>
           ))}
         </dl>
+        <LastUpdatedBadge date={item.updatedAt} className="self-end" />
       </section>
 
       <section

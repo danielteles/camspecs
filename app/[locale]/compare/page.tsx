@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { CompareActions } from "@/components/compare-actions";
 import { CompareSelector } from "@/components/compare-selector";
 import { DiffToggle } from "@/components/diff-toggle";
+import { LastUpdatedBadge } from "@/components/last-updated-badge";
 import {
   Table,
   TableBody,
@@ -44,6 +45,14 @@ export default async function ComparePage({
   ]);
   const items = resolveComparisonItems(slugs, cameras, lenses);
   const rows: ComparisonRow[] = buildComparisonRows(items, cameras);
+  // The oldest sync time among the compared items is the honest "data as
+  // of" bound for the whole table — some items may have synced more
+  // recently, none synced earlier than this.
+  const oldestUpdatedAt = items.reduce<Date | null>(
+    (oldest, item) =>
+      !oldest || item.updatedAt < oldest ? item.updatedAt : oldest,
+    null,
+  );
 
   const comparisonContent = (
     <>
@@ -160,6 +169,13 @@ export default async function ComparePage({
             <DiffToggle>{comparisonContent}</DiffToggle>
           ) : (
             comparisonContent
+          )}
+          {oldestUpdatedAt && (
+            <LastUpdatedBadge
+              date={oldestUpdatedAt}
+              variant="aggregate"
+              className="self-end"
+            />
           )}
         </>
       )}

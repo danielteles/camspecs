@@ -32,6 +32,10 @@
     "moreHeading": "More",
     "githubLink": "GitHub repository"
   },
+  "LastUpdated": {
+    "label": "Last updated: {date}",
+    "aggregateLabel": "Specs last synced: {date}"
+  },
   "Catalog": {
     "allFilter": "All",
     "viewSpecsCta": "View specs",

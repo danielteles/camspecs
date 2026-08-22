@@ -16,6 +16,7 @@ export const CAMERAS: Camera[] = [
     sensor: { widthMm: 35.6, heightMm: 23.8 },
     megapixels: 33,
     releaseYear: 2021,
+    updatedAt: new Date("2026-08-20T12:00:00Z"),
   },
   {
     slug: "fujifilm-x-t5",
@@ -26,6 +27,7 @@ export const CAMERAS: Camera[] = [
     sensor: { widthMm: 23.5, heightMm: 15.6 },
     megapixels: 40.2,
     releaseYear: 2022,
+    updatedAt: new Date("2026-08-18T09:30:00Z"),
   },
   {
     slug: "om-system-om-1",
@@ -36,6 +38,7 @@ export const CAMERAS: Camera[] = [
     sensor: { widthMm: 17.4, heightMm: 13.0 },
     megapixels: 20.4,
     releaseYear: 2022,
+    updatedAt: new Date("2026-08-15T18:45:00Z"),
   },
 ];
 
@@ -50,6 +53,7 @@ export const LENSES: Lens[] = [
     maxAperture: 1.8,
     minAperture: 22,
     releaseYear: 2019,
+    updatedAt: new Date("2026-08-19T08:15:00Z"),
   },
   {
     slug: "fujifilm-xf-16-55mm-f2-8",
@@ -61,6 +65,7 @@ export const LENSES: Lens[] = [
     maxAperture: 2.8,
     minAperture: 22,
     releaseYear: 2015,
+    updatedAt: new Date("2026-08-17T14:00:00Z"),
   },
   {
     slug: "olympus-mzuiko-25mm-f1-8",
@@ -72,5 +77,6 @@ export const LENSES: Lens[] = [
     maxAperture: 1.8,
     minAperture: 22,
     releaseYear: 2014,
+    updatedAt: new Date("2026-08-10T11:20:00Z"),
   },
 ];

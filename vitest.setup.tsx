@@ -67,6 +67,13 @@ vi.mock("next-intl/server", () => ({
       typeof options === "string" ? options : options?.namespace;
     return createTranslator(namespace);
   },
+  // Mirrors createTranslator's "always resolve against en.json" behavior:
+  // formats with the "en" locale regardless of what the real request would
+  // resolve, since tests don't run inside a Next.js request context.
+  getFormatter: async () => ({
+    dateTime: (date: Date, options?: Intl.DateTimeFormatOptions) =>
+      new Intl.DateTimeFormat("en", options).format(date),
+  }),
   setRequestLocale: vi.fn(),
 }));
 

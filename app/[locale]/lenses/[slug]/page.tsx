@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 
 import { Breadcrumb } from "@/components/breadcrumb";
 import { FieldOfViewVisualizer } from "@/components/field-of-view-visualizer";
+import { LastUpdatedBadge } from "@/components/last-updated-badge";
 import { Button } from "@/components/ui/button";
 import { Link } from "@/i18n/navigation";
 import {
@@ -144,6 +145,7 @@ export default async function LensPage({
             </div>
           ))}
         </dl>
+        <LastUpdatedBadge date={item.updatedAt} className="self-end" />
       </section>
 
       {compatibleCameras[0] && (
