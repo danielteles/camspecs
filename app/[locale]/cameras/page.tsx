@@ -2,7 +2,12 @@ import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { CamerasCatalog } from "@/components/cameras-catalog";
-import { CAMERAS } from "@/lib/mock-data";
+import { getAllCameras } from "@/lib/services/equipment";
+
+// Matches the on-demand revalidation the scraper pipeline triggers via
+// POST /api/revalidate after upserting rows; this is the fallback in case
+// a revalidation call is missed.
+export const revalidate = 3600;
 
 export async function generateMetadata({
   params,
@@ -27,6 +32,7 @@ export default async function CamerasPage({
   setRequestLocale(locale);
 
   const t = await getTranslations("Catalog.cameras");
+  const cameras = await getAllCameras();
 
   return (
     <main
@@ -40,7 +46,7 @@ export default async function CamerasPage({
         <p className="text-muted-foreground text-base">{t("description")}</p>
       </div>
 
-      <CamerasCatalog cameras={CAMERAS} />
+      <CamerasCatalog cameras={cameras} />
     </main>
   );
 }
