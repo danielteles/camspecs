@@ -65,4 +65,10 @@ jobs:
           fi
 
       - name: Production build
+        env:
+          # Configure under Settings -> Secrets and variables -> Actions.
+          # Static generation for camera/lens pages queries this DB at
+          # build time (see lib/db/client.ts), so it must be set even
+          # though the build doesn't write to it.
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: npm run build
