@@ -1,22 +1,11 @@
-import type { Camera, Lens, Mount, MountId } from "./types";
+import type { Camera, Lens } from "@/lib/types";
 
-export const MOUNTS: Record<MountId, Mount> = {
-  "canon-rf": { id: "canon-rf", name: "Canon RF", flangeDistanceMm: 20.0 },
-  "nikon-z": { id: "nikon-z", name: "Nikon Z", flangeDistanceMm: 16.0 },
-  "sony-e": { id: "sony-e", name: "Sony E", flangeDistanceMm: 18.0 },
-  "fujifilm-x": {
-    id: "fujifilm-x",
-    name: "Fujifilm X",
-    flangeDistanceMm: 17.7,
-  },
-  "micro-four-thirds": {
-    id: "micro-four-thirds",
-    name: "Micro Four Thirds",
-    flangeDistanceMm: 19.25,
-  },
-  "l-mount": { id: "l-mount", name: "L-Mount", flangeDistanceMm: 20.0 },
-};
-
+/**
+ * Deterministic camera/lens fixtures for unit tests. Formerly lib/mock-data.ts,
+ * which the app used as a runtime fallback before Postgres was wired up;
+ * kept here (test-only) since compare-data/search/equivalence tests rely on
+ * these exact brands, slugs, and sensor dimensions for their assertions.
+ */
 export const CAMERAS: Camera[] = [
   {
     slug: "sony-a7-iv",

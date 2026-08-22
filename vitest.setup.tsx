@@ -4,6 +4,7 @@ import type { MouseEvent, ReactNode } from "react";
 import { afterEach, beforeEach, vi } from "vitest";
 
 import { createTranslator } from "@/test/mocks/i18n";
+import { CAMERAS, LENSES } from "@/test/mocks/equipment";
 import {
   mockUsePathname,
   mockUseRouter,
@@ -115,6 +116,22 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => mockUseSearchParams(),
   usePathname: () => mockUsePathname(),
   useRouter: () => mockUseRouter(),
+}));
+
+// The Postgres-backed service layer (lib/services/equipment.ts): server
+// components (Footer, page.tsx files) call this directly, but unit tests
+// have no live database, so it resolves from the same fixtures other tests
+// use instead of opening a real connection.
+vi.mock("@/lib/services/equipment", () => ({
+  getAllCameras: vi.fn(async () => CAMERAS),
+  getAllLenses: vi.fn(async () => LENSES),
+  getCameraBySlug: vi.fn(
+    async (slug: string) =>
+      CAMERAS.find((camera) => camera.slug === slug) ?? null,
+  ),
+  getLensBySlug: vi.fn(
+    async (slug: string) => LENSES.find((lens) => lens.slug === slug) ?? null,
+  ),
 }));
 
 beforeEach(() => {

@@ -12,7 +12,7 @@ import {
   InputGroupInput,
 } from "@/components/ui/input-group";
 import { formatAperture, formatFocalLengthRange } from "@/lib/compare-data";
-import { MOUNTS } from "@/lib/mock-data";
+import { MOUNTS } from "@/lib/mounts";
 import type { Lens, MountId } from "@/lib/types";
 
 interface LensesCatalogProps {

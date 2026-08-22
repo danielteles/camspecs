@@ -6,7 +6,7 @@ import {
   getEquivalentAperture,
   getEquivalentFocalLength,
 } from "./equivalence";
-import { CAMERAS, LENSES, MOUNTS } from "./mock-data";
+import { MOUNTS } from "./mounts";
 import type { Camera, Lens, SensorFormat } from "./types";
 
 export type ComparisonItem =
@@ -14,11 +14,17 @@ export type ComparisonItem =
 
 /**
  * Resolves slugs to their full camera/lens records, preserving the order of
- * `slugs` and silently dropping any that don't match a known item.
+ * `slugs` and silently dropping any that don't match a known item. Pure and
+ * data-source agnostic: callers fetch cameras/lenses themselves (DB in
+ * production, fixtures in tests) and pass them in.
  */
-export function resolveComparisonItems(slugs: string[]): ComparisonItem[] {
-  const camerasBySlug = new Map(CAMERAS.map((camera) => [camera.slug, camera]));
-  const lensesBySlug = new Map(LENSES.map((lens) => [lens.slug, lens]));
+export function resolveComparisonItems(
+  slugs: string[],
+  cameras: Camera[],
+  lenses: Lens[],
+): ComparisonItem[] {
+  const camerasBySlug = new Map(cameras.map((camera) => [camera.slug, camera]));
+  const lensesBySlug = new Map(lenses.map((lens) => [lens.slug, lens]));
 
   return slugs
     .map((slug): ComparisonItem | undefined => {
@@ -39,13 +45,11 @@ export function resolveComparisonItems(slugs: string[]): ComparisonItem[] {
 
 /**
  * A lens has no sensor of its own, so its 35mm-equivalent specs are derived
- * from a camera sharing its mount. `cameras` defaults to the mock catalog
- * for callers (compare page, tests) that haven't been wired to the database
- * yet; callers with real data should pass their own fetched camera list.
+ * from a camera sharing its mount.
  */
 function getNativeCameraForLens(
   lens: Lens,
-  cameras: Camera[] = CAMERAS,
+  cameras: Camera[],
 ): Camera | undefined {
   return cameras.find((camera) => camera.mount === lens.mount);
 }
@@ -264,7 +268,7 @@ const ROW_DEFINITIONS: RowDefinition[] = [
 
 export function buildComparisonRows(
   items: ComparisonItem[],
-  cameras: Camera[] = CAMERAS,
+  cameras: Camera[] = [],
 ): ComparisonRow[] {
   return ROW_DEFINITIONS.map((definition) => {
     const values = items.map((item) => definition.getValue(item, cameras));

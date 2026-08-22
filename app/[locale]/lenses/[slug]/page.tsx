@@ -12,7 +12,7 @@ import {
   type ComparisonItem,
   type ComparisonRow,
 } from "@/lib/compare-data";
-import { MOUNTS } from "@/lib/mock-data";
+import { MOUNTS } from "@/lib/mounts";
 import {
   getAllCameras,
   getAllLenses,

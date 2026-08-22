@@ -9,7 +9,10 @@ import {
   SENSOR_FORMAT_BADGE_VARIANT,
   SENSOR_FORMAT_KEYS,
 } from "@/lib/compare-data";
-import { CAMERAS, LENSES, MOUNTS } from "@/lib/mock-data";
+import { MOUNTS } from "@/lib/mounts";
+import { getAllCameras, getAllLenses } from "@/lib/services/equipment";
+
+export const revalidate = 3600;
 
 export default async function HomePage({ params }: PageProps<"/[locale]">) {
   const { locale } = await params;
@@ -17,6 +20,10 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
 
   const t = await getTranslations("HomePage");
   const tGlobal = await getTranslations();
+  const [cameras, lenses] = await Promise.all([
+    getAllCameras(),
+    getAllLenses(),
+  ]);
 
   return (
     <main
@@ -65,7 +72,7 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
             {t("featuredCamerasHeading")}
           </h3>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {CAMERAS.map((camera) => (
+            {cameras.map((camera) => (
               <EquipmentCard
                 key={camera.slug}
                 href={`/cameras/${camera.slug}`}
@@ -85,7 +92,7 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
             {t("featuredLensesHeading")}
           </h3>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {LENSES.map((lens) => (
+            {lenses.map((lens) => (
               <EquipmentCard
                 key={lens.slug}
                 href={`/lenses/${lens.slug}`}

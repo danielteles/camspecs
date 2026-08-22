@@ -21,6 +21,7 @@ import {
   type ComparisonRow,
 } from "@/lib/compare-data";
 import { COMPARE_ITEMS_PARAM, parseCompareItems } from "@/lib/compare-params";
+import { getAllCameras, getAllLenses } from "@/lib/services/equipment";
 
 export default async function ComparePage({
   params,
@@ -37,8 +38,12 @@ export default async function ComparePage({
   const slugs = parseCompareItems(
     Array.isArray(itemsParam) ? itemsParam[0] : itemsParam,
   );
-  const items = resolveComparisonItems(slugs);
-  const rows: ComparisonRow[] = buildComparisonRows(items);
+  const [cameras, lenses] = await Promise.all([
+    getAllCameras(),
+    getAllLenses(),
+  ]);
+  const items = resolveComparisonItems(slugs, cameras, lenses);
+  const rows: ComparisonRow[] = buildComparisonRows(items, cameras);
 
   const comparisonContent = (
     <>

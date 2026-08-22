@@ -12,7 +12,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { CAMERAS, MOUNTS } from "@/lib/mock-data";
+import { MOUNTS } from "@/lib/mounts";
+import { getAllCameras } from "@/lib/services/equipment";
+
+export const revalidate = 3600;
 
 export default async function ShowcasePage({
   params,
@@ -21,6 +24,7 @@ export default async function ShowcasePage({
   setRequestLocale(locale);
 
   const t = await getTranslations("Showcase");
+  const cameras = await getAllCameras();
 
   return (
     <main
@@ -138,7 +142,7 @@ export default async function ShowcasePage({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {CAMERAS.map((camera) => (
+            {cameras.map((camera) => (
               <TableRow key={camera.slug}>
                 <TableHead scope="row" className="font-medium">
                   {camera.model}

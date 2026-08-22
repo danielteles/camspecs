@@ -15,7 +15,7 @@ import {
   SENSOR_FORMAT_BADGE_VARIANT,
   SENSOR_FORMAT_KEYS,
 } from "@/lib/compare-data";
-import { MOUNTS } from "@/lib/mock-data";
+import { MOUNTS } from "@/lib/mounts";
 import type { Camera, SensorFormat } from "@/lib/types";
 
 interface CamerasCatalogProps {

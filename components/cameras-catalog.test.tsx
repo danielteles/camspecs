@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
 import { CamerasCatalog } from "@/components/cameras-catalog";
-import { CAMERAS } from "@/lib/mock-data";
+import { CAMERAS } from "@/test/mocks/equipment";
 
 describe("CamerasCatalog", () => {
   it("renders a card for every camera", () => {
