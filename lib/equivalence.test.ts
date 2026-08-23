@@ -11,7 +11,7 @@ import {
   getSensorDiagonalMm,
   getVerticalFieldOfView,
 } from "./equivalence";
-import { CAMERAS } from "./mock-data";
+import { CAMERAS } from "@/test/mocks/equipment";
 
 const APS_C_SENSOR = { widthMm: 23.5, heightMm: 15.6 };
 const MFT_SENSOR = { widthMm: 17.4, heightMm: 13.0 };

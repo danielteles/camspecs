@@ -4,15 +4,22 @@ import { notFound } from "next/navigation";
 
 import { Breadcrumb } from "@/components/breadcrumb";
 import { FieldOfViewVisualizer } from "@/components/field-of-view-visualizer";
+import { LastUpdatedBadge } from "@/components/last-updated-badge";
 import { Button } from "@/components/ui/button";
 import { Link } from "@/i18n/navigation";
 import {
   buildComparisonRows,
   formatRowValue,
-  resolveComparisonItems,
+  type ComparisonItem,
   type ComparisonRow,
 } from "@/lib/compare-data";
-import { CAMERAS, LENSES, MOUNTS } from "@/lib/mock-data";
+import { isDatabaseConfigured } from "@/lib/db/client";
+import { MOUNTS } from "@/lib/mounts";
+import {
+  getAllCameras,
+  getAllLenses,
+  getLensBySlug,
+} from "@/lib/services/equipment";
 
 const SPEC_ROW_IDS = [
   "brand",
@@ -27,19 +34,26 @@ const SPEC_ROW_IDS = [
   "diagonalFieldOfView",
 ];
 
-export function generateStaticParams() {
-  return LENSES.map((lens) => ({ slug: lens.slug }));
+export async function generateStaticParams() {
+  if (!isDatabaseConfigured()) {
+    console.warn(
+      "[lenses/[slug]] DATABASE_URL not set — skipping static generation; pages will render on demand.",
+    );
+    return [];
+  }
+  const lenses = await getAllLenses();
+  return lenses.map((lens) => ({ slug: lens.slug }));
 }
 
-// Mock data never changes at runtime, but a real backend's catalog would;
-// this demonstrates the ISR revalidation window a live deployment would use.
+// Fallback for the case an on-demand revalidatePath call (triggered by the
+// scraper pipeline after an upsert, see app/api/revalidate) is missed.
 export const revalidate = 3600;
 
 export async function generateMetadata({
   params,
 }: PageProps<"/[locale]/lenses/[slug]">): Promise<Metadata> {
   const { locale, slug } = await params;
-  const lens = LENSES.find((l) => l.slug === slug);
+  const lens = await getLensBySlug(slug);
   if (!lens) {
     return {};
   }
@@ -68,12 +82,14 @@ export default async function LensPage({
   const { locale, slug } = await params;
   setRequestLocale(locale);
 
-  const [item] = resolveComparisonItems([slug]);
-  if (!item || item.type !== "lens") {
+  const lens = await getLensBySlug(slug);
+  if (!lens) {
     notFound();
   }
+  const item: ComparisonItem = { type: "lens", ...lens };
 
-  const rows = buildComparisonRows([item]);
+  const cameras = await getAllCameras();
+  const rows = buildComparisonRows([item], cameras);
   const specRows = SPEC_ROW_IDS.map((id) =>
     rows.find((row) => row.id === id),
   ).filter((row): row is ComparisonRow => row !== undefined);
@@ -81,7 +97,7 @@ export default async function LensPage({
   const t = await getTranslations();
   const tCommon = await getTranslations("Common");
   const tProduct = await getTranslations("ProductPage");
-  const compatibleCameras = CAMERAS.filter(
+  const compatibleCameras = cameras.filter(
     (camera) => camera.mount === item.mount,
   );
 
@@ -136,6 +152,7 @@ export default async function LensPage({
             </div>
           ))}
         </dl>
+        <LastUpdatedBadge date={item.updatedAt} className="self-end" />
       </section>
 
       {compatibleCameras[0] && (

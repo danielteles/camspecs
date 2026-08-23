@@ -6,7 +6,7 @@ import {
   getEquivalentAperture,
   getEquivalentFocalLength,
 } from "./equivalence";
-import { CAMERAS, LENSES, MOUNTS } from "./mock-data";
+import { MOUNTS } from "./mounts";
 import type { Camera, Lens, SensorFormat } from "./types";
 
 export type ComparisonItem =
@@ -14,11 +14,17 @@ export type ComparisonItem =
 
 /**
  * Resolves slugs to their full camera/lens records, preserving the order of
- * `slugs` and silently dropping any that don't match a known item.
+ * `slugs` and silently dropping any that don't match a known item. Pure and
+ * data-source agnostic: callers fetch cameras/lenses themselves (DB in
+ * production, fixtures in tests) and pass them in.
  */
-export function resolveComparisonItems(slugs: string[]): ComparisonItem[] {
-  const camerasBySlug = new Map(CAMERAS.map((camera) => [camera.slug, camera]));
-  const lensesBySlug = new Map(LENSES.map((lens) => [lens.slug, lens]));
+export function resolveComparisonItems(
+  slugs: string[],
+  cameras: Camera[],
+  lenses: Lens[],
+): ComparisonItem[] {
+  const camerasBySlug = new Map(cameras.map((camera) => [camera.slug, camera]));
+  const lensesBySlug = new Map(lenses.map((lens) => [lens.slug, lens]));
 
   return slugs
     .map((slug): ComparisonItem | undefined => {
@@ -39,11 +45,13 @@ export function resolveComparisonItems(slugs: string[]): ComparisonItem[] {
 
 /**
  * A lens has no sensor of its own, so its 35mm-equivalent specs are derived
- * from the camera in the catalog that shares its mount (every mock lens is
- * paired 1:1 with a camera on the same mount).
+ * from a camera sharing its mount.
  */
-function getNativeCameraForLens(lens: Lens): Camera | undefined {
-  return CAMERAS.find((camera) => camera.mount === lens.mount);
+function getNativeCameraForLens(
+  lens: Lens,
+  cameras: Camera[],
+): Camera | undefined {
+  return cameras.find((camera) => camera.mount === lens.mount);
 }
 
 function i18nValue(key: string): string {
@@ -116,7 +124,7 @@ export interface ComparisonRow {
 interface RowDefinition {
   id: string;
   labelKey: string;
-  getValue: (item: ComparisonItem) => string | null;
+  getValue: (item: ComparisonItem, cameras: Camera[]) => string | null;
 }
 
 const ROW_DEFINITIONS: RowDefinition[] = [
@@ -169,11 +177,11 @@ const ROW_DEFINITIONS: RowDefinition[] = [
   {
     id: "cropFactor",
     labelKey: "ComparePage.rows.cropFactor",
-    getValue: (item) => {
+    getValue: (item, cameras) => {
       const sensor =
         item.type === "camera"
           ? item.sensor
-          : getNativeCameraForLens(item)?.sensor;
+          : getNativeCameraForLens(item, cameras)?.sensor;
       return sensor ? formatCropFactor(getCropFactor(sensor)) : null;
     },
   },
@@ -200,11 +208,11 @@ const ROW_DEFINITIONS: RowDefinition[] = [
   {
     id: "equivalentFocalLength",
     labelKey: "ComparePage.rows.equivalentFocalLength",
-    getValue: (item) => {
+    getValue: (item, cameras) => {
       if (item.type !== "lens") {
         return null;
       }
-      const nativeCamera = getNativeCameraForLens(item);
+      const nativeCamera = getNativeCameraForLens(item, cameras);
       if (!nativeCamera) {
         return null;
       }
@@ -218,11 +226,11 @@ const ROW_DEFINITIONS: RowDefinition[] = [
   {
     id: "equivalentAperture",
     labelKey: "ComparePage.rows.equivalentAperture",
-    getValue: (item) => {
+    getValue: (item, cameras) => {
       if (item.type !== "lens") {
         return null;
       }
-      const nativeCamera = getNativeCameraForLens(item);
+      const nativeCamera = getNativeCameraForLens(item, cameras);
       if (!nativeCamera) {
         return null;
       }
@@ -235,11 +243,11 @@ const ROW_DEFINITIONS: RowDefinition[] = [
   {
     id: "diagonalFieldOfView",
     labelKey: "ComparePage.rows.diagonalFieldOfView",
-    getValue: (item) => {
+    getValue: (item, cameras) => {
       if (item.type !== "lens") {
         return null;
       }
-      const nativeCamera = getNativeCameraForLens(item);
+      const nativeCamera = getNativeCameraForLens(item, cameras);
       if (!nativeCamera) {
         return null;
       }
@@ -258,9 +266,12 @@ const ROW_DEFINITIONS: RowDefinition[] = [
   },
 ];
 
-export function buildComparisonRows(items: ComparisonItem[]): ComparisonRow[] {
+export function buildComparisonRows(
+  items: ComparisonItem[],
+  cameras: Camera[] = [],
+): ComparisonRow[] {
   return ROW_DEFINITIONS.map((definition) => {
-    const values = items.map((item) => definition.getValue(item));
+    const values = items.map((item) => definition.getValue(item, cameras));
     const isIdentical = values.every((value) => value === values[0]);
 
     return {

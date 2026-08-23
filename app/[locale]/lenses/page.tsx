@@ -2,7 +2,12 @@ import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { LensesCatalog } from "@/components/lenses-catalog";
-import { LENSES } from "@/lib/mock-data";
+import { getAllLenses } from "@/lib/services/equipment";
+
+// Matches the on-demand revalidation the scraper pipeline triggers via
+// POST /api/revalidate after upserting rows; this is the fallback in case
+// a revalidation call is missed.
+export const revalidate = 3600;
 
 export async function generateMetadata({
   params,
@@ -27,6 +32,7 @@ export default async function LensesPage({
   setRequestLocale(locale);
 
   const t = await getTranslations("Catalog.lenses");
+  const lenses = await getAllLenses();
 
   return (
     <main
@@ -40,7 +46,7 @@ export default async function LensesPage({
         <p className="text-muted-foreground text-base">{t("description")}</p>
       </div>
 
-      <LensesCatalog lenses={LENSES} />
+      <LensesCatalog lenses={lenses} />
     </main>
   );
 }

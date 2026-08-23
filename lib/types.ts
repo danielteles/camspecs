@@ -30,6 +30,8 @@ export interface Camera {
   sensor: SensorDimensions;
   megapixels: number;
   releaseYear: number;
+  /** When the ETL scraper pipeline last synced this record's specs. */
+  updatedAt: Date;
 }
 
 export interface Lens {
@@ -42,4 +44,6 @@ export interface Lens {
   maxAperture: number;
   minAperture: number;
   releaseYear: number;
+  /** When the ETL scraper pipeline last synced this record's specs. */
+  updatedAt: Date;
 }

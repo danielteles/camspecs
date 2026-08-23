@@ -5,16 +5,24 @@ import { OgCard } from "@/components/og-card";
 import {
   buildComparisonRows,
   getFormattedRowValue,
-  resolveComparisonItems,
+  type ComparisonItem,
 } from "@/lib/compare-data";
-import { CAMERAS } from "@/lib/mock-data";
+import { isDatabaseConfigured } from "@/lib/db/client";
+import { getAllCameras, getCameraBySlug } from "@/lib/services/equipment";
 
 export const alt = "Camera specifications";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-export function generateStaticParams() {
-  return CAMERAS.map((camera) => ({ slug: camera.slug }));
+export async function generateStaticParams() {
+  if (!isDatabaseConfigured()) {
+    console.warn(
+      "[opengraph-image] DATABASE_URL not set — skipping static generation for camera OG images.",
+    );
+    return [];
+  }
+  const cameras = await getAllCameras();
+  return cameras.map((camera) => ({ slug: camera.slug }));
 }
 
 export default async function Image({
@@ -25,9 +33,9 @@ export default async function Image({
   const { locale, slug } = await params;
   const t = await getTranslations({ locale });
 
-  const [item] = resolveComparisonItems([slug]);
+  const camera = await getCameraBySlug(slug);
 
-  if (!item || item.type !== "camera") {
+  if (!camera) {
     return new ImageResponse(
       <OgCard
         eyebrow={t("Common.siteName")}
@@ -39,6 +47,7 @@ export default async function Image({
     );
   }
 
+  const item: ComparisonItem = { type: "camera", ...camera };
   const rows = buildComparisonRows([item]);
   const value = (rowId: string) => getFormattedRowValue(rows, rowId, 0, t);
 

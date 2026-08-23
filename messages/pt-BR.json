@@ -32,6 +32,10 @@
     "moreHeading": "Mais",
     "githubLink": "Repositório no GitHub"
   },
+  "LastUpdated": {
+    "label": "Última atualização: {date}",
+    "aggregateLabel": "Especificações sincronizadas em: {date}"
+  },
   "Catalog": {
     "allFilter": "Todos",
     "viewSpecsCta": "Ver especificações",

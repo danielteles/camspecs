@@ -1,0 +1,22 @@
+import type { Mount, MountId } from "./types";
+
+/**
+ * Static lens-mount reference data (name, flange distance) — not scraped
+ * equipment, so it lives apart from the database-backed camera/lens catalog.
+ */
+export const MOUNTS: Record<MountId, Mount> = {
+  "canon-rf": { id: "canon-rf", name: "Canon RF", flangeDistanceMm: 20.0 },
+  "nikon-z": { id: "nikon-z", name: "Nikon Z", flangeDistanceMm: 16.0 },
+  "sony-e": { id: "sony-e", name: "Sony E", flangeDistanceMm: 18.0 },
+  "fujifilm-x": {
+    id: "fujifilm-x",
+    name: "Fujifilm X",
+    flangeDistanceMm: 17.7,
+  },
+  "micro-four-thirds": {
+    id: "micro-four-thirds",
+    name: "Micro Four Thirds",
+    flangeDistanceMm: 19.25,
+  },
+  "l-mount": { id: "l-mount", name: "L-Mount", flangeDistanceMm: 20.0 },
+};

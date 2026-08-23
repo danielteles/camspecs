@@ -1,10 +1,16 @@
 import { describe, expect, it } from "vitest";
 
+import { CAMERAS, LENSES } from "@/test/mocks/equipment";
+
 import {
   buildComparisonRows,
   getI18nKey,
   resolveComparisonItems,
 } from "./compare-data";
+
+function resolve(slugs: string[]) {
+  return resolveComparisonItems(slugs, CAMERAS, LENSES);
+}
 
 function getRow(rows: ReturnType<typeof buildComparisonRows>, id: string) {
   const row = rows.find((r) => r.id === id);
@@ -16,7 +22,7 @@ function getRow(rows: ReturnType<typeof buildComparisonRows>, id: string) {
 
 describe("resolveComparisonItems", () => {
   it("resolves camera and lens slugs, tagging each with its type", () => {
-    const items = resolveComparisonItems(["sony-a7-iv", "sony-fe-50mm-f1-8"]);
+    const items = resolve(["sony-a7-iv", "sony-fe-50mm-f1-8"]);
     expect(items.map((item) => item.type)).toEqual(["camera", "lens"]);
     expect(items.map((item) => item.slug)).toEqual([
       "sony-a7-iv",
@@ -25,11 +31,7 @@ describe("resolveComparisonItems", () => {
   });
 
   it("preserves requested order and drops unknown slugs", () => {
-    const items = resolveComparisonItems([
-      "fujifilm-x-t5",
-      "does-not-exist",
-      "sony-a7-iv",
-    ]);
+    const items = resolve(["fujifilm-x-t5", "does-not-exist", "sony-a7-iv"]);
     expect(items.map((item) => item.slug)).toEqual([
       "fujifilm-x-t5",
       "sony-a7-iv",
@@ -37,7 +39,7 @@ describe("resolveComparisonItems", () => {
   });
 
   it("returns an empty array for an empty input", () => {
-    expect(resolveComparisonItems([])).toEqual([]);
+    expect(resolve([])).toEqual([]);
   });
 });
 
@@ -55,15 +57,15 @@ describe("getI18nKey", () => {
 
 describe("buildComparisonRows", () => {
   it("includes the release year for both cameras and lenses", () => {
-    const items = resolveComparisonItems(["sony-a7-iv", "sony-fe-50mm-f1-8"]);
-    const rows = buildComparisonRows(items);
+    const items = resolve(["sony-a7-iv", "sony-fe-50mm-f1-8"]);
+    const rows = buildComparisonRows(items, CAMERAS);
 
     expect(getRow(rows, "releaseYear").values).toEqual(["2021", "2019"]);
   });
 
   it("computes the 35mm-equivalent focal length and aperture for a prime lens", () => {
-    const items = resolveComparisonItems(["sony-a7-iv", "sony-fe-50mm-f1-8"]);
-    const rows = buildComparisonRows(items);
+    const items = resolve(["sony-a7-iv", "sony-fe-50mm-f1-8"]);
+    const rows = buildComparisonRows(items, CAMERAS);
 
     // Sony A7 IV's real sensor (35.6x23.8mm) is close to, but not exactly,
     // 36x24mm, so its crop factor is close to but not exactly 1.00.
@@ -76,11 +78,8 @@ describe("buildComparisonRows", () => {
   });
 
   it("computes a focal length and equivalent range for a zoom lens", () => {
-    const items = resolveComparisonItems([
-      "fujifilm-x-t5",
-      "fujifilm-xf-16-55mm-f2-8",
-    ]);
-    const rows = buildComparisonRows(items);
+    const items = resolve(["fujifilm-x-t5", "fujifilm-xf-16-55mm-f2-8"]);
+    const rows = buildComparisonRows(items, CAMERAS);
 
     expect(getRow(rows, "cropFactor").values).toEqual(["1.53×", "1.53×"]);
     expect(getRow(rows, "focalLength").values).toEqual([null, "16–55mm"]);
@@ -96,8 +95,8 @@ describe("buildComparisonRows", () => {
   });
 
   it("marks rows identical when every item shares the same value", () => {
-    const items = resolveComparisonItems(["sony-a7-iv", "fujifilm-x-t5"]);
-    const rows = buildComparisonRows(items);
+    const items = resolve(["sony-a7-iv", "fujifilm-x-t5"]);
+    const rows = buildComparisonRows(items, CAMERAS);
 
     // Both are cameras, so the "type" row is identical...
     expect(getRow(rows, "type").isIdentical).toBe(true);
@@ -109,16 +108,16 @@ describe("buildComparisonRows", () => {
   it("marks a row identical when it's inapplicable to every item", () => {
     // Two cameras: lens-only rows are `null` for both, which counts as
     // identical (there's nothing to differentiate, so diff mode hides it).
-    const items = resolveComparisonItems(["sony-a7-iv", "fujifilm-x-t5"]);
-    const rows = buildComparisonRows(items);
+    const items = resolve(["sony-a7-iv", "fujifilm-x-t5"]);
+    const rows = buildComparisonRows(items, CAMERAS);
 
     expect(getRow(rows, "focalLength").values).toEqual([null, null]);
     expect(getRow(rows, "focalLength").isIdentical).toBe(true);
   });
 
   it("marks every row identical for a single item", () => {
-    const items = resolveComparisonItems(["sony-a7-iv"]);
-    const rows = buildComparisonRows(items);
+    const items = resolve(["sony-a7-iv"]);
+    const rows = buildComparisonRows(items, CAMERAS);
 
     expect(rows.every((row) => row.isIdentical)).toBe(true);
   });

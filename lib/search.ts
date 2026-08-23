@@ -1,5 +1,4 @@
-import { CAMERAS, LENSES } from "./mock-data";
-import type { MountId } from "./types";
+import type { Camera, Lens, MountId } from "./types";
 
 export type CatalogItemType = "camera" | "lens";
 
@@ -11,18 +10,18 @@ export interface CatalogItem {
   mount: MountId;
 }
 
-let catalogCache: CatalogItem[] | undefined;
-
-function getCatalog(): CatalogItem[] {
-  catalogCache ??= [
-    ...CAMERAS.map((camera): CatalogItem => ({
+/** Flattens the camera and lens catalogs into the shape the compare
+ * selector's search/resolve functions operate on. */
+export function buildCatalog(cameras: Camera[], lenses: Lens[]): CatalogItem[] {
+  return [
+    ...cameras.map((camera): CatalogItem => ({
       type: "camera",
       slug: camera.slug,
       brand: camera.brand,
       model: camera.model,
       mount: camera.mount,
     })),
-    ...LENSES.map((lens): CatalogItem => ({
+    ...lenses.map((lens): CatalogItem => ({
       type: "lens",
       slug: lens.slug,
       brand: lens.brand,
@@ -30,22 +29,23 @@ function getCatalog(): CatalogItem[] {
       mount: lens.mount,
     })),
   ];
-
-  return catalogCache;
 }
 
 /**
  * Case-insensitive substring search over brand + model. An empty or
  * whitespace-only query returns the full catalog.
  */
-export function searchCatalog(query: string): CatalogItem[] {
+export function searchCatalog(
+  catalog: CatalogItem[],
+  query: string,
+): CatalogItem[] {
   const normalized = query.trim().toLowerCase();
 
   if (!normalized) {
-    return getCatalog();
+    return catalog;
   }
 
-  return getCatalog().filter((item) =>
+  return catalog.filter((item) =>
     `${item.brand} ${item.model}`.toLowerCase().includes(normalized),
   );
 }
@@ -54,8 +54,11 @@ export function searchCatalog(query: string): CatalogItem[] {
  * Resolves a list of slugs to their catalog items, preserving the order of
  * `slugs` and silently dropping any that don't match a known item.
  */
-export function resolveCatalogSlugs(slugs: string[]): CatalogItem[] {
-  const bySlug = new Map(getCatalog().map((item) => [item.slug, item]));
+export function resolveCatalogSlugs(
+  catalog: CatalogItem[],
+  slugs: string[],
+): CatalogItem[] {
+  const bySlug = new Map(catalog.map((item) => [item.slug, item]));
 
   return slugs
     .map((slug) => bySlug.get(slug))
