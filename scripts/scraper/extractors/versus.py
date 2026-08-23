@@ -60,6 +60,33 @@ MAX_ATTEMPTS = 2
 _PAYLOAD_SCRIPT_SELECTOR = 'script#payload[type="application/json"]'
 _YEAR_PATTERN = re.compile(r"\b(1[89]\d{2}|20\d{2})\b")
 
+# Versus's 404 is a soft 404: the AWS WAF challenge response Playwright
+# navigates to is always HTTP 202 regardless of whether the slug exists
+# (verified live — the challenge resolves client-side without a further
+# top-level navigation, so `page.goto()`'s response status never reflects
+# the final rendered page). The only reliable signal is what the SPA
+# renders: a real product page gets a `tr[data-spec]` row and a normal
+# title, a missing one settles on `document.title === "Not found"` with no
+# spec table. Racing both conditions with `wait_for_function` instead of
+# waiting out the full spec-table timeout before checking resolves either
+# case in ~1s (verified live) rather than the full SPEC_TABLE_TIMEOUT_MS.
+_PAGE_SETTLED_JS = (
+    "() => document.title === 'Not found' "
+    "|| document.querySelector('tr[data-spec]') !== null"
+)
+_NOT_FOUND_TITLE = "Not found"
+
+
+class VersusSlugError(RuntimeError):
+    """Raised when a Versus.com slug doesn't resolve to a real product page.
+
+    Distinct from the retryable `PlaywrightTimeoutError` path: a 404 is a
+    fact about the slug, not a transient WAF/network hiccup, so retrying it
+    would just burn the full NAV_TIMEOUT_MS/SPEC_TABLE_TIMEOUT_MS budget
+    twice for a page that will never resolve (see the "guessed kit slugs
+    failed with 404s" issue this was written to fix).
+    """
+
 
 def _spec_text(soup: BeautifulSoup, key: str) -> str | None:
     """Look up one `data-spec="key"` row's value cell, or None if missing/empty.
@@ -119,7 +146,12 @@ async def _fetch_rendered_soup(slug: str) -> BeautifulSoup:
 
     Retries the whole navigation (not just the request) since a failure here
     is usually the WAF challenge not having resolved in time, which a fresh
-    page load recovers from.
+    page load recovers from. A real 404 (see `_PAGE_SETTLED_JS`'s docstring
+    note) is checked for and raised immediately instead, without retrying:
+    it's a fact about the slug, not a transient failure a retry could fix,
+    and every kit slug is bundle-guessed from a camera + lens pairing
+    (Versus has no standalone lens pages) so 404s are the expected failure
+    mode for a guess that didn't pan out, not the exception.
     """
     url = BASE_URL.format(slug=slug)
     last_exc: Exception | None = None
@@ -130,13 +162,15 @@ async def _fetch_rendered_soup(slug: str) -> BeautifulSoup:
                 try:
                     page = await browser.new_page(user_agent=USER_AGENT)
                     await page.goto(url, timeout=NAV_TIMEOUT_MS, wait_until="domcontentloaded")
-                    await page.wait_for_selector(
-                        "tr[data-spec]", timeout=SPEC_TABLE_TIMEOUT_MS
-                    )
+                    await page.wait_for_function(_PAGE_SETTLED_JS, timeout=SPEC_TABLE_TIMEOUT_MS)
+                    if await page.title() == _NOT_FOUND_TITLE:
+                        raise VersusSlugError(f"Versus slug {slug!r} does not exist (404)")
                     html = await page.content()
                 finally:
                     await browser.close()
             return BeautifulSoup(html, "html.parser")
+        except VersusSlugError:
+            raise
         except PlaywrightTimeoutError as exc:
             last_exc = exc
             logger.warning(

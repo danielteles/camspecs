@@ -65,8 +65,24 @@ DEFAULT_VERSUS_CAMERA_SLUGS = [
 # lens" kit (see extractors/versus.py). Each entry here is scraped for its
 # lens half only; the camera half is already covered by
 # DEFAULT_VERSUS_CAMERA_SLUGS / DEFAULT_NIKON_URLS.
+#
+# Every slug below was confirmed live (full spec table, not a 404) before
+# being added — kit slugs can't be derived from a naming pattern (verified:
+# "fujifilm-x-t5-fujifilm-xf-18-55mm-f2-8-4-r-lm-ois" 404s despite following
+# the same "{camera-slug}-{lens-brand}-{lens-model-slug}" shape every
+# working slug below does), only found via Versus's own search index or a
+# page's "cheap alternatives" links. That search turned up no kit at all for
+# either Fujifilm body in DEFAULT_VERSUS_CAMERA_SLUGS (x-t5, x-t50) — Sony E,
+# Canon RF, and Nikon Z are covered below, Fujifilm X currently has no
+# working Versus kit slug to add.
 DEFAULT_VERSUS_LENS_SLUGS = [
-    "sony-alpha-7-iv-sony-fe-50mm-f1-8",
+    "sony-alpha-7-iv-sony-fe-50mm-f1-8",  # Sony E
+    "sony-alpha-6700-sony-e-18-135mm-f3-5-5-6-oss",  # Sony E
+    "canon-eos-r6-mark-ii-canon-rf-24-105mm-f-4l-is-usm",  # Canon RF
+    "canon-eos-r8-canon-rf-24-50mm-f-4-5-6-3-is-stm",  # Canon RF
+    "canon-eos-r5-canon-rf-24-105mm-f-4l-is-usm",  # Canon RF
+    "nikon-z6-iii-nikon-nikkor-z-24-120mm-f-4-s",  # Nikon Z
+    "nikon-zf-nikon-nikkor-z-40mm-f-2-se",  # Nikon Z
 ]
 
 
