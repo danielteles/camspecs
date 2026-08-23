@@ -85,6 +85,29 @@ DEFAULT_VERSUS_LENS_SLUGS = [
     "nikon-zf-nikon-nikkor-z-40mm-f-2-se",  # Nikon Z
 ]
 
+# Wikidata QIDs for each lens-kit slug's lens half, verified live — used
+# only to backfill release_year. Versus's kit pages deliberately don't
+# expose the lens's own release date (see extractors/versus.py's
+# map_lens_specs docstring: a kit's page only carries the camera's date,
+# and attaching that to the lens would misattribute it — a lens can predate
+# or postdate its kit camera by years), so it's never available from Versus
+# itself. Confirmed live, per QID, that Wikidata's own record has the
+# property populated at all before adding an entry here: 5 of these 6 items
+# have no P577/P6949 date statement whatsoever (a genuine upstream gap, not
+# a query-limit issue) and correctly backfill to still-null; only
+# sony-fe-50mm-f1-8 (Q30645819) has one, and it's missed by the general
+# Wikidata lens crawl's recency-ordered LIMIT window since the lens dates to
+# 2016 — same reasoning as NIKON_WIKIDATA_QIDS above, applied to lenses.
+VERSUS_LENS_WIKIDATA_QIDS = {
+    "sony-alpha-7-iv-sony-fe-50mm-f1-8": "Q30645819",
+    "sony-alpha-6700-sony-e-18-135mm-f3-5-5-6-oss": "Q116257084",
+    "canon-eos-r6-mark-ii-canon-rf-24-105mm-f-4l-is-usm": "Q97154591",
+    "canon-eos-r8-canon-rf-24-50mm-f-4-5-6-3-is-stm": "Q123130447",
+    "canon-eos-r5-canon-rf-24-105mm-f-4l-is-usm": "Q97154591",
+    "nikon-z6-iii-nikon-nikkor-z-24-120mm-f-4-s": "Q116719408",
+    "nikon-zf-nikon-nikkor-z-40mm-f-2-se": "Q116719420",
+}
+
 
 class Timer:
     """Context manager that logs and records a pipeline phase's duration."""
@@ -155,9 +178,22 @@ async def fetch_all(
 
     for slug in versus_lens_slugs:
         try:
-            lenses.append(await versus.fetch_lens(slug))
+            lens = await versus.fetch_lens(slug)
         except Exception:
             logger.exception("Skipping Versus lens slug after repeated failures: %s", slug)
+            continue
+
+        qid = VERSUS_LENS_WIKIDATA_QIDS.get(slug)
+        if lens.release_year is None and qid:
+            try:
+                async with httpx.AsyncClient(
+                    headers={"User-Agent": wikidata.USER_AGENT}, timeout=wikidata.REQUEST_TIMEOUT_S
+                ) as wikidata_client:
+                    lens.release_year = await wikidata.fetch_release_year(wikidata_client, qid)
+            except Exception:
+                logger.warning("Could not backfill release_year for %s from Wikidata", slug)
+
+        lenses.append(lens)
 
     return cameras, lenses
 
