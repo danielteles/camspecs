@@ -1,3 +1,6 @@
+// Current mirrorless mounts only — DSLR/legacy mounts are intentionally out
+// of scope, not unimplemented. See README.md's "Architecture: supported
+// mounts" section for the full rationale and every other enforcement point.
 export type MountId =
   | "canon-rf"
   | "nikon-z"

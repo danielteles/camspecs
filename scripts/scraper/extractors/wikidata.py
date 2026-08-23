@@ -40,6 +40,9 @@ LENS_MODEL_QID = "Q109672300"  # "lens model"
 # support. Enumerating the exact mounts we support instead fixes both
 # problems at once: no false positives, and every row is guaranteed usable.
 # QIDs verified empirically against the live endpoint (not guessed).
+#
+# This mirrorless-only set is a deliberate, formalized scope decision, not
+# a gap — see the repo README's "Architecture: supported mounts" section.
 MOUNT_QIDS = {
     "canon-rf": "Q56487870",  # Canon RF lens mount
     "nikon-z": "Q56240413",  # Nikon Z-mount

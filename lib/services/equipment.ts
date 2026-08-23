@@ -4,6 +4,11 @@ import { getDb } from "@/lib/db/client";
 import type { CamerasTable, LensesTable } from "@/lib/db/schema";
 import type { Camera, Lens, MountId, SensorFormat } from "@/lib/types";
 
+// Re-derived from MountId rather than trusted from the DB column, which is
+// a plain String with no enum constraint of its own (see
+// scripts/scraper/db/schema.py) — this is the last line of defense against
+// an unsupported (e.g. legacy DSLR) mount reaching a user. See README.md's
+// "Architecture: supported mounts".
 const MOUNT_IDS: ReadonlySet<string> = new Set<MountId>([
   "canon-rf",
   "nikon-z",
