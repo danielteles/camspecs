@@ -170,6 +170,58 @@ def _is_unresolved_label(value: str) -> bool:
     return bool(_UNRESOLVED_LABEL.fullmatch(value))
 
 
+# Wikidata's manufacturerLabel resolves to whatever the *manufacturer
+# item's* current best English label is — often the parent corporate
+# entity's full legal/official name, not the consumer brand printed on the
+# product itself. Verified live: real pipeline output has `brand="Sony
+# Group"` on a lens whose own item label is "Sony E 11mm F1.8", "Canon
+# Inc." on cameras labeled "Canon EOS ...", "Fujifilm Corporation" on
+# "Fujifilm X-..." items, and "Panasonic Holdings Corporation" on
+# "Panasonic Lumix ..." items. `_strip_brand_prefix` only strips an
+# exact-prefix match, so an unnormalized corporate name never matches the
+# product label's own brand prefix and both end up concatenated in the
+# final title (e.g. "Sony Group" + "Sony E 11mm F1.8", never stripped).
+#
+# Every alias below is a verified real value from a live pipeline run, not
+# a guess — mapped to the exact brand word each manufacturer's own product
+# labels are prefixed with, which is what makes `_strip_brand_prefix` work
+# correctly afterward. "Nikon" needs no entry: Wikidata's label for it
+# already matches Nikon's own product-label prefix.
+_MANUFACTURER_LABEL_ALIASES: dict[str, str] = {
+    "sony group": "Sony",
+    "canon inc.": "Canon",
+    "fujifilm corporation": "Fujifilm",
+    "panasonic holdings corporation": "Panasonic",
+}
+
+# Fallback for a corporate label not already covered by the verified alias
+# map above (e.g. a manufacturer outside our current live data, or Wikidata
+# rewording an existing one) — strips common corporate-entity suffixes so
+# an unrecognized label still degrades to something reasonable instead of
+# reproducing the double-branding bug outright. Ordered longest-first
+# within each alternation group so a compound suffix (e.g. "Holdings
+# Corporation") isn't left partially stripped by a shorter alternative
+# matching first.
+_CORPORATE_SUFFIX_PATTERN = re.compile(
+    r"\s+(holdings corporation|corporation|group|co\.,?\s*ltd\.?|ltd\.?|inc\.?)\s*$",
+    re.IGNORECASE,
+)
+
+
+def _normalize_manufacturer_label(label: str) -> str:
+    """Resolves a raw Wikidata manufacturerLabel to a product-facing brand name.
+
+    Tries the verified alias map first (exact, known-correct); falls back
+    to stripping a trailing corporate-entity suffix for anything else,
+    rather than leaving an unrecognized corporate name untouched.
+    """
+    normalized = _MANUFACTURER_LABEL_ALIASES.get(label.strip().lower())
+    if normalized:
+        return normalized
+    stripped = _CORPORATE_SUFFIX_PATTERN.sub("", label).strip()
+    return stripped or label
+
+
 def _strip_brand_prefix(label: str, brand: str) -> str:
     prefix = f"{brand} "
     if label.lower().startswith(prefix.lower()):
@@ -210,6 +262,7 @@ def _map_camera_binding(binding: dict[str, Any]) -> dict[str, Any] | None:
         return None
     if any(_is_unresolved_label(v) for v in (model_label, brand)):
         return None
+    brand = _normalize_manufacturer_label(brand)
 
     qid = _extract_qid(binding["item"]["value"])
     return {
@@ -242,6 +295,7 @@ def _map_lens_binding(binding: dict[str, Any]) -> dict[str, Any] | None:
         return None
     if None in (min_fl, max_fl, min_ap, max_ap):
         return None
+    brand = _normalize_manufacturer_label(brand)
 
     qid = _extract_qid(binding["item"]["value"])
     return {
