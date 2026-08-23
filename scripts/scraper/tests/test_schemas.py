@@ -40,6 +40,18 @@ MOCK_CAMERAS = [
         "crop_factor": "1,5x",
         "source": "wikidata",
     },
+    {
+        "brand": "Fujifilm",
+        "model": "GFX100 II",
+        "mount": "Fujifilm G-mount",
+        "sensor_format": "Medium format",
+        "megapixels": 102,
+        "release_year": 2023,
+        # Comma as a thousands separator, not a decimal point (verified live
+        # on Versus's GFX100 II page) — must parse to 1030, not 1.
+        "weight_g": "1,030 g",
+        "source": "versus",
+    },
 ]
 
 MOCK_LENSES = [
@@ -86,6 +98,12 @@ def main() -> None:
         print(f"OK  {camera.brand} {camera.model} -> slug={camera.slug!r}")
         pprint(camera.model_dump())
         print()
+
+    gfx100ii = next(c for c in map(CameraSpecs.model_validate, MOCK_CAMERAS) if c.slug == "fujifilm-gfx100-ii")
+    assert gfx100ii.weight_g == 1030, (
+        "a comma thousands separator ('1,030 g') must parse to 1030g, not 1g"
+    )
+    print("OK  comma-thousands weight assertion passed\n")
 
     print("=== Validating mock LensSpecs ===")
     for raw in MOCK_LENSES:

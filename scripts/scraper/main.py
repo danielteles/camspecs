@@ -52,8 +52,15 @@ NIKON_WIKIDATA_QIDS = {
 # always "other" (no populated property for it) and only gets backfilled by
 # whichever of these cameras also happens to come back from Wikidata's
 # recency-ordered crawl — so this list is deliberately broader than the 3
-# original entries to raise that overlap across all 4 manufacturer-scraped
-# mounts (Sony E, Canon RF, Nikon Z, Fujifilm X).
+# original entries to raise that overlap across all 5 manufacturer-scraped
+# mounts (Sony E, Canon RF, Nikon Z, Fujifilm X, Fujifilm G).
+#
+# The two GFX entries are confirmed live standalone product pages (full
+# spec table: sensor-format "Medium format", lens-mount "Fujifilm G",
+# megapixels, weight, release-date all populated) — same page shape as
+# every other camera slug here, nothing GFX-specific needed on the camera
+# side. See DEFAULT_VERSUS_LENS_SLUGS below for the GF *lens* side, which
+# did need an extractor change (extractors/versus.py's `map_lens_specs`).
 DEFAULT_VERSUS_CAMERA_SLUGS = [
     "sony-alpha-7-iv",
     "sony-alpha-6700",
@@ -64,12 +71,19 @@ DEFAULT_VERSUS_CAMERA_SLUGS = [
     "nikon-zf",
     "fujifilm-x-t5",
     "fujifilm-x-t50",
+    "fujifilm-gfx100s",
+    "fujifilm-gfx100-ii",
 ]
 
-# Versus.com has no standalone lens pages — every lens slug is a "camera +
-# lens" kit (see extractors/versus.py). Each entry here is scraped for its
-# lens half only; the camera half is already covered by
-# DEFAULT_VERSUS_CAMERA_SLUGS / DEFAULT_NIKON_URLS.
+# Versus.com has no standalone lens pages for most mounts — every one of
+# those lens slugs is a "camera + lens" kit (see extractors/versus.py).
+# Each such entry is scraped for its lens half only; the camera half is
+# already covered by DEFAULT_VERSUS_CAMERA_SLUGS / DEFAULT_NIKON_URLS.
+# Fujifilm's GF (medium format) lenses are the one confirmed exception —
+# real standalone lens pages of their own, no kit bundling at all (verified
+# live: "fujifilm-gfx100s-fujifilm-gf-32-64mm-f-4-r-lm-wr" 404s — no such
+# kit page exists for any GFX body). `extractors/versus.py`'s
+# `map_lens_specs` handles both page shapes.
 #
 # Every slug below was confirmed live (full spec table, not a 404) before
 # being added — kit slugs can't be derived from a naming pattern (verified:
@@ -89,6 +103,11 @@ DEFAULT_VERSUS_CAMERA_SLUGS = [
 # WAF JS-challenge page (HTTP 202, no real content), the same constraint
 # documented in extractors/versus.py for the whole site; every slug here
 # was found and confirmed via a real browser instead.
+#
+# The 3 Fujifilm G entries were found via Versus's own search index
+# ("fujifilm gf") rather than a camera-page's "cheap alternatives" list —
+# every GFX camera's alternatives are cross-brand kits (Canon/Sony/Nikon),
+# never a Fujifilm GF pairing, so that discovery path doesn't apply here.
 DEFAULT_VERSUS_LENS_SLUGS = [
     "sony-alpha-7-iv-sony-fe-50mm-f1-8",  # Sony E
     "sony-alpha-6700-sony-e-18-135mm-f3-5-5-6-oss",  # Sony E
@@ -100,6 +119,9 @@ DEFAULT_VERSUS_LENS_SLUGS = [
     "fujifilm-x-e5-fujifilm-xf-23mm-f-2-8-r-wr",  # Fujifilm X
     "fujifilm-x-s10-fujifilm-xf-18-55mm-f2-8-4-r-lm-ois",  # Fujifilm X
     "fujifilm-x-s10-fujifilm-fujinon-xf-16-80mm-f-4-r-ois-wr",  # Fujifilm X
+    "fujifilm-gf-32-64mm-f-4-r-lm-wr",  # Fujifilm G (standalone page)
+    "fujifilm-gf-63mm-f-2-8-r-wr",  # Fujifilm G (standalone page)
+    "fujifilm-fujinon-gf-80mm-f-1-7-r-wr",  # Fujifilm G (standalone page)
 ]
 
 # Wikidata QIDs for each lens-kit slug's lens half, verified live — used

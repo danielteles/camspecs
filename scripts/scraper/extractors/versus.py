@@ -45,8 +45,10 @@ BASE_URL = "https://versus.com/en/{slug}"
 # slug for this camera is "sony-alpha-7-iv" ("sony-a7-iv" also resolves, via
 # redirect). Verified live.
 DEFAULT_CAMERA_SLUG = "sony-alpha-7-iv"
-# Versus has no standalone lens product pages — lenses only appear bundled
-# into a "camera + lens" kit slug, which is what's scraped for lens facts.
+# Versus has no standalone lens product pages for most mounts — lenses only
+# appear bundled into a "camera + lens" kit slug, which is what's scraped
+# for lens facts (see `map_lens_specs`'s docstring for the confirmed
+# exception: Fujifilm GF lenses do have their own standalone pages).
 DEFAULT_LENS_KIT_SLUG = "sony-alpha-7-iv-sony-fe-50mm-f1-8"
 
 USER_AGENT = (
@@ -206,20 +208,29 @@ def map_camera_specs(soup: BeautifulSoup, slug: str) -> dict[str, Any]:
 
 
 def map_lens_specs(soup: BeautifulSoup, slug: str) -> dict[str, Any]:
-    """Map a scraped Versus kit page's DOM into a raw LensSpecs dict.
+    """Map a scraped Versus lens page's DOM into a raw LensSpecs dict.
 
-    Versus has no standalone lens pages — this reads the lens half of a
-    "camera + lens" kit page. Weight and release date on these pages are the
-    *camera's* figures (verified: identical to the camera's solo page), so
-    they're deliberately left unmapped here rather than mis-attributed to
-    the lens.
+    Two page shapes exist here, verified live. Most mounts (Sony E, Canon
+    RF, Nikon Z, Fujifilm X) only have "camera + lens" kit pages — Versus
+    has no standalone product page for those lenses at all — so
+    `display_name` there is "Camera Name + Lens Name" and only the lens half
+    is used; weight and release date on a kit page are the *camera's*
+    figures (verified: identical to the camera's solo page), so they're
+    deliberately left unmapped rather than mis-attributed to the lens.
+    Fujifilm's GF (medium format) lenses are a confirmed exception: they
+    have real standalone lens pages of their own (e.g.
+    "fujifilm-gf-63mm-f-2-8-r-wr"), where `display_name` is just the lens's
+    own name with no " + " delimiter — detected here via `is_kit_page`. On
+    a standalone page there's no camera to conflate with, so weight and
+    release date genuinely belong to the lens and are safe to map.
     """
     payload = _extract_payload(soup)
     display_name = _product_display_name(soup, payload)
-    lens_name = display_name.split(" + ", 1)[1] if display_name and " + " in display_name else None
+    is_kit_page = bool(display_name and " + " in display_name)
+    lens_name = display_name.split(" + ", 1)[1] if is_kit_page else display_name
     brand, model = _split_brand_model(lens_name) if lens_name else (None, None)
 
-    return {
+    raw: dict[str, Any] = {
         "brand": brand,
         "model": model,
         "mount": _spec_text(soup, "lens-mount"),
@@ -233,6 +244,10 @@ def map_lens_specs(soup: BeautifulSoup, slug: str) -> dict[str, Any]:
         "source": "versus",
         "source_url": BASE_URL.format(slug=slug),
     }
+    if not is_kit_page:
+        raw["weight_g"] = _spec_text(soup, "weight")
+        raw["release_year"] = _parse_release_year(_spec_text(soup, "release-date"))
+    return raw
 
 
 async def fetch_camera(slug: str = DEFAULT_CAMERA_SLUG) -> CameraSpecs:
