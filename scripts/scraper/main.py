@@ -22,6 +22,7 @@ from db.upsert import upsert_cameras, upsert_lenses
 from extractors import nikon, versus, wikidata
 from models import CameraSpecs, LensSpecs
 from transformers.merger import merge_records
+from transformers.sensor_fallback import backfill_sensor_dimensions
 
 load_dotenv()
 logger = logging.getLogger(__name__)
@@ -176,6 +177,7 @@ async def run_pipeline(args: argparse.Namespace) -> None:
     with Timer("Merge") as t_merge:
         cameras = merge_records(raw_cameras)
         lenses = merge_records(raw_lenses)
+        cameras = backfill_sensor_dimensions(cameras)
     logger.info("Merged into %d camera(s), %d lens(es)", len(cameras), len(lenses))
 
     with Timer("Validate") as t_validate:
