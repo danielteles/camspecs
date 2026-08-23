@@ -71,10 +71,19 @@ DEFAULT_VERSUS_CAMERA_SLUGS = [
 # "fujifilm-x-t5-fujifilm-xf-18-55mm-f2-8-4-r-lm-ois" 404s despite following
 # the same "{camera-slug}-{lens-brand}-{lens-model-slug}" shape every
 # working slug below does), only found via Versus's own search index or a
-# page's "cheap alternatives" links. That search turned up no kit at all for
-# either Fujifilm body in DEFAULT_VERSUS_CAMERA_SLUGS (x-t5, x-t50) — Sony E,
-# Canon RF, and Nikon Z are covered below, Fujifilm X currently has no
-# working Versus kit slug to add.
+# page's "cheap alternatives" links.
+#
+# Fujifilm X's 3 entries don't pair with either Fujifilm body in
+# DEFAULT_VERSUS_CAMERA_SLUGS (x-t5, x-t50) — searching those specific
+# bodies for a kit still turns up nothing live. The lens half doesn't need
+# to match our curated camera list, though: these 3 are still real, live
+# Fujifilm X-mount kit pages contributing real lens data, just bundled with
+# other Fujifilm bodies (X-E5, X-S10) that happen to have Versus kit
+# coverage. Note also: curl_cffi (even with Chrome TLS impersonation,
+# verified live) never gets past this — it only ever receives Versus's AWS
+# WAF JS-challenge page (HTTP 202, no real content), the same constraint
+# documented in extractors/versus.py for the whole site; every slug here
+# was found and confirmed via a real browser instead.
 DEFAULT_VERSUS_LENS_SLUGS = [
     "sony-alpha-7-iv-sony-fe-50mm-f1-8",  # Sony E
     "sony-alpha-6700-sony-e-18-135mm-f3-5-5-6-oss",  # Sony E
@@ -83,6 +92,9 @@ DEFAULT_VERSUS_LENS_SLUGS = [
     "canon-eos-r5-canon-rf-24-105mm-f-4l-is-usm",  # Canon RF
     "nikon-z6-iii-nikon-nikkor-z-24-120mm-f-4-s",  # Nikon Z
     "nikon-zf-nikon-nikkor-z-40mm-f-2-se",  # Nikon Z
+    "fujifilm-x-e5-fujifilm-xf-23mm-f-2-8-r-wr",  # Fujifilm X
+    "fujifilm-x-s10-fujifilm-xf-18-55mm-f2-8-4-r-lm-ois",  # Fujifilm X
+    "fujifilm-x-s10-fujifilm-fujinon-xf-16-80mm-f-4-r-ois-wr",  # Fujifilm X
 ]
 
 # Wikidata QIDs for each lens-kit slug's lens half, verified live — used
