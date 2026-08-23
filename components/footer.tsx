@@ -9,10 +9,17 @@ import { getAllCameras, getAllLenses } from "@/lib/services/equipment";
 
 const GITHUB_URL = "https://github.com/danielteles/camspecs";
 
+// Verified live against the current cameras table (see
+// lib/services/equipment.ts's toCamera — a slug only resolves here if it
+// also passes full frontend validation, not just "exists"). Sourced from
+// our manufacturer/Versus-scraped cameras rather than Wikidata-only ones,
+// since those are the records this pipeline reliably keeps populated on
+// every run — a Wikidata-only pick could silently drop out of a future
+// crawl's top-N-by-recency window. One pairing per curated mount pair.
 const POPULAR_COMPARISON_SLUGS: [string, string][] = [
-  ["sony-a7-iv", "fujifilm-x-t5"],
-  ["fujifilm-x-t5", "om-system-om-1"],
-  ["sony-fe-50mm-f1-8", "fujifilm-xf-16-55mm-f2-8"],
+  ["sony-alpha-7-iv", "canon-eos-r6-mark-ii"],
+  ["canon-eos-r8", "sony-alpha-6700"],
+  ["nikon-zf", "fujifilm-x-t50"],
 ];
 
 const FOOTER_LINK_CLASSNAME =
