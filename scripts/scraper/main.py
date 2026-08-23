@@ -21,7 +21,7 @@ from db.schema import create_all
 from db.upsert import upsert_cameras, upsert_lenses
 from extractors import nikon, versus, wikidata
 from models import CameraSpecs, LensSpecs
-from transformers.merger import merge_records
+from transformers.merger import drop_unmergeable_wikidata_cameras, merge_records
 from transformers.sensor_fallback import backfill_sensor_dimensions
 
 load_dotenv()
@@ -193,8 +193,15 @@ async def run_pipeline(args: argparse.Namespace) -> None:
     with Timer("Merge") as t_merge:
         cameras = merge_records(raw_cameras)
         lenses = merge_records(raw_lenses)
+        pre_filter_count = len(cameras)
+        cameras = drop_unmergeable_wikidata_cameras(cameras)
         cameras = backfill_sensor_dimensions(cameras)
     logger.info("Merged into %d camera(s), %d lens(es)", len(cameras), len(lenses))
+    if pre_filter_count != len(cameras):
+        logger.info(
+            "Dropped %d Wikidata-only camera(s) with no resolvable sensor format",
+            pre_filter_count - len(cameras),
+        )
 
     with Timer("Validate") as t_validate:
         # Every record is already a validated Pydantic instance by this

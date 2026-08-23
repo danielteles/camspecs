@@ -15,6 +15,9 @@ from typing import TypeVar
 
 from pydantic import BaseModel
 
+from models.camera import CameraSpecs
+from models.enums import SensorFormat
+
 T = TypeVar("T", bound=BaseModel)
 
 # Fields that identify *which* source(s) produced a record rather than
@@ -105,3 +108,30 @@ def merge_records(records: list[T]) -> list[T]:
         groups.setdefault(key, []).append(record)
 
     return [_merge_group(group) for group in groups.values()]
+
+
+def drop_unmergeable_wikidata_cameras(cameras: list[CameraSpecs]) -> list[CameraSpecs]:
+    """Drop merged camera records that only Wikidata ever contributed to.
+
+    Wikidata has no populated sensor-format property for camera items (see
+    extractors/wikidata.py's `_map_camera_binding`) — every Wikidata camera
+    record is created with `sensor_format="other"`. That value only
+    survives into the merged record when no manufacturer/Versus source also
+    covers the same camera: `_is_empty()` treats "other" as a real,
+    non-empty value, so a higher-priority source's real format always wins
+    the merge instead of being backfilled over. A merged record with
+    `sensor_format=="other"` and no manufacturer/Versus contribution is
+    therefore never going to resolve a real sensor format — no fallback
+    (transformers/sensor_fallback.py) or frontend rule (see
+    lib/services/equipment.ts's `toCamera`) can save it — so keeping it
+    around just means upserting a row nobody will ever see. Checking
+    `source == "wikidata"` rather than just the format alone avoids
+    dropping a genuine manufacturer/Versus record that happens to land on
+    "other" itself (a real, separately-diagnosable scraping gap, not this
+    problem).
+    """
+    return [
+        camera
+        for camera in cameras
+        if not (camera.sensor_format == SensorFormat.OTHER and camera.source == "wikidata")
+    ]
