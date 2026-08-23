@@ -4,6 +4,7 @@ import { getTranslations } from "next-intl/server";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { Link } from "@/i18n/navigation";
 import { resolveComparisonItems } from "@/lib/compare-data";
+import { isDatabaseConfigured } from "@/lib/db/client";
 import { getAllCameras, getAllLenses } from "@/lib/services/equipment";
 
 const GITHUB_URL = "https://github.com/danielteles/camspecs";
@@ -21,17 +22,29 @@ export async function Footer() {
   const t = await getTranslations("Footer");
   const tCommon = await getTranslations("Common");
 
-  const [cameras, lenses] = await Promise.all([
-    getAllCameras(),
-    getAllLenses(),
-  ]);
-  const popularComparisons = POPULAR_COMPARISON_SLUGS.map((slugs) => {
-    const items = resolveComparisonItems(slugs, cameras, lenses);
-    return {
-      href: `/compare?items=${slugs.join(",")}`,
-      label: items.map((item) => `${item.brand} ${item.model}`).join(" vs "),
-    };
-  }).filter((comparison) => comparison.label.includes(" vs "));
+  // The footer renders on every page, so this runs during static generation
+  // for the whole site — a CI build with the DB secret unset would
+  // otherwise hard-fail here the same way the catalog pages' unguarded
+  // fetches used to (see lib/db/client.ts). Rendering no popular
+  // comparisons degrades gracefully instead.
+  let popularComparisons: { href: string; label: string }[] = [];
+  if (isDatabaseConfigured()) {
+    const [cameras, lenses] = await Promise.all([
+      getAllCameras(),
+      getAllLenses(),
+    ]);
+    popularComparisons = POPULAR_COMPARISON_SLUGS.map((slugs) => {
+      const items = resolveComparisonItems(slugs, cameras, lenses);
+      return {
+        href: `/compare?items=${slugs.join(",")}`,
+        label: items.map((item) => `${item.brand} ${item.model}`).join(" vs "),
+      };
+    }).filter((comparison) => comparison.label.includes(" vs "));
+  } else {
+    console.warn(
+      "[footer] DATABASE_URL not set — skipping popular comparisons fetch.",
+    );
+  }
 
   return (
     <footer className="border-border border-t">

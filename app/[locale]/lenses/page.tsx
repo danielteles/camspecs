@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { LensesCatalog } from "@/components/lenses-catalog";
+import { isDatabaseConfigured } from "@/lib/db/client";
 import { getAllLenses } from "@/lib/services/equipment";
 
 // Matches the on-demand revalidation the scraper pipeline triggers via
@@ -32,7 +33,19 @@ export default async function LensesPage({
   setRequestLocale(locale);
 
   const t = await getTranslations("Catalog.lenses");
-  const lenses = await getAllLenses();
+  // This route has no dynamic API usage, so Next.js statically prerenders
+  // it at build time by default — a CI build with the DB secret unset
+  // would otherwise hard-fail here the same way the [slug] pages' unguarded
+  // generateStaticParams used to (see lib/db/client.ts). Rendering an empty
+  // catalog degrades to the component's existing "no results" state instead.
+  let lenses: Awaited<ReturnType<typeof getAllLenses>> = [];
+  if (isDatabaseConfigured()) {
+    lenses = await getAllLenses();
+  } else {
+    console.warn(
+      "[lenses] DATABASE_URL not set — skipping catalog fetch; rendering empty catalog.",
+    );
+  }
 
   return (
     <main

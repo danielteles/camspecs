@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { CamerasCatalog } from "@/components/cameras-catalog";
+import { isDatabaseConfigured } from "@/lib/db/client";
 import { getAllCameras } from "@/lib/services/equipment";
 
 // Matches the on-demand revalidation the scraper pipeline triggers via
@@ -32,7 +33,19 @@ export default async function CamerasPage({
   setRequestLocale(locale);
 
   const t = await getTranslations("Catalog.cameras");
-  const cameras = await getAllCameras();
+  // This route has no dynamic API usage, so Next.js statically prerenders
+  // it at build time by default — a CI build with the DB secret unset
+  // would otherwise hard-fail here the same way the [slug] pages' unguarded
+  // generateStaticParams used to (see lib/db/client.ts). Rendering an empty
+  // catalog degrades to the component's existing "no results" state instead.
+  let cameras: Awaited<ReturnType<typeof getAllCameras>> = [];
+  if (isDatabaseConfigured()) {
+    cameras = await getAllCameras();
+  } else {
+    console.warn(
+      "[cameras] DATABASE_URL not set — skipping catalog fetch; rendering empty catalog.",
+    );
+  }
 
   return (
     <main

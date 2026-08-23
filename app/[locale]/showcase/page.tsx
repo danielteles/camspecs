@@ -12,6 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { isDatabaseConfigured } from "@/lib/db/client";
 import { MOUNTS } from "@/lib/mounts";
 import { getAllCameras } from "@/lib/services/equipment";
 
@@ -24,7 +25,16 @@ export default async function ShowcasePage({
   setRequestLocale(locale);
 
   const t = await getTranslations("Showcase");
-  const cameras = await getAllCameras();
+  // This route has no dynamic API usage, so Next.js statically prerenders
+  // it at build time by default — a CI build with the DB secret unset
+  // would otherwise hard-fail here the same way the catalog pages'
+  // unguarded fetches used to (see lib/db/client.ts).
+  let cameras: Awaited<ReturnType<typeof getAllCameras>> = [];
+  if (isDatabaseConfigured()) {
+    cameras = await getAllCameras();
+  } else {
+    console.warn("[showcase] DATABASE_URL not set — skipping camera fetch.");
+  }
 
   return (
     <main
