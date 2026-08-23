@@ -14,6 +14,7 @@ const MOUNT_IDS: ReadonlySet<string> = new Set<MountId>([
   "nikon-z",
   "sony-e",
   "fujifilm-x",
+  "fujifilm-g",
   "micro-four-thirds",
   "l-mount",
 ]);

@@ -48,6 +48,7 @@ MOUNT_QIDS = {
     "nikon-z": "Q56240413",  # Nikon Z-mount
     "sony-e": "Q209536",  # Sony E-mount
     "fujifilm-x": "Q209708",  # Fujifilm X-mount
+    "fujifilm-g": "Q65553416",  # Fujifilm G-mount (medium format)
     "micro-four-thirds": "Q1366492",  # Micro Four Thirds system
     "l-mount": "Q30242162",  # L-Mount
 }
@@ -76,11 +77,24 @@ def build_camera_sparql(limit: int) -> str:
     # otherwise Wikidata's query planner tends to surface old, low-QID items
     # first (early-2000s DSLRs), crowding out the current mirrorless bodies
     # this site actually covers.
+    #
+    # P2935|P527 (property path alternation): verified live that most GFX
+    # (Fujifilm G-mount) camera items don't use P2935 ("connector") for
+    # their mount at all — of 5 known GFX bodies checked, only 2 (GFX100S,
+    # GFX100 II) have mount data on Wikidata at all, and both record it via
+    # P527 ("has part(s)") instead. Every other supported mount is tagged
+    # via P2935 consistently (spot-checked against the full live result
+    # set), so this alternation is additive — it doesn't change which items
+    # match for Canon/Nikon/Sony/Fujifilm X/MFT/L-mount, only picks up the
+    # P527-tagged GFX items P2935 alone would miss. The other 3 known GFX
+    # bodies (50S, 100, 100S II) have no mount property under either name —
+    # a genuine Wikidata data gap, not something a broader property path
+    # can recover.
     return f"""
 SELECT ?item ?itemLabel ?manufacturerLabel ?mount ?mountLabel ?mass ?pubDate ?announceDate WHERE {{
   ?item wdt:P31 wd:{CAMERA_MODEL_QID};
         wdt:P176 ?manufacturer;
-        wdt:P2935 ?mount.
+        (wdt:P2935|wdt:P527) ?mount.
   VALUES ?mount {{ {_mount_values_clause()} }}
   OPTIONAL {{ ?item wdt:P2067 ?mass. }}
   OPTIONAL {{ ?item wdt:P577 ?pubDate. }}

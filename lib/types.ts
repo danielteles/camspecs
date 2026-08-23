@@ -6,6 +6,7 @@ export type MountId =
   | "nikon-z"
   | "sony-e"
   | "fujifilm-x"
+  | "fujifilm-g"
   | "micro-four-thirds"
   | "l-mount";
 

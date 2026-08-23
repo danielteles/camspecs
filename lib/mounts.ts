@@ -13,6 +13,11 @@ export const MOUNTS: Record<MountId, Mount> = {
     name: "Fujifilm X",
     flangeDistanceMm: 17.7,
   },
+  "fujifilm-g": {
+    id: "fujifilm-g",
+    name: "Fujifilm G",
+    flangeDistanceMm: 26.7,
+  },
   "micro-four-thirds": {
     id: "micro-four-thirds",
     name: "Micro Four Thirds",
