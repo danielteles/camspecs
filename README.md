@@ -18,29 +18,43 @@ CamSpecs is scoped to **current mirrorless interchangeable-lens systems only**. 
 
 **Where this is enforced** (three independent points — a mount unsupported at any one of them never reaches a user):
 
-- `scripts/scraper/extractors/wikidata.py`'s `MOUNT_QIDS` — the SPARQL query only asks Wikidata for items using one of these mount QIDs, so nothing else enters the pipeline from that source in the first place.
+- The scraper's structured-data extractor, in `scripts/scraper/extractors/`, only queries for items using one of these mount identifiers, so nothing else enters the pipeline from that source in the first place.
 - `lib/types.ts`'s `MountId` union and `lib/mounts.ts`'s `MOUNTS` registry — the only mount values the frontend can represent at all.
 - `lib/services/equipment.ts`'s `MOUNT_IDS` — the DB read boundary: a row with any other mount value is logged and skipped rather than shown. This exists because the Postgres `mount` column itself has no enum constraint (a plain `String` in `scripts/scraper/db/schema.py`'s `CameraRecord`/`LensRecord`) — nothing at the database level stops a future source or manual insert from writing an unsupported mount, so the frontend re-checks rather than trusting the schema.
 
-**If DSLR support is ever added**, it needs new entries at all three enforcement points above, plus mount-specific flange-distance data and new per-mount scrape targets in `scripts/scraper/main.py`'s `DEFAULT_*_SLUGS`/`DEFAULT_*_URLS` lists (the manufacturer/Versus sources are curated per-mount, not crawled generically).
+**If DSLR support is ever added**, it needs new entries at all three enforcement points above, plus mount-specific flange-distance data and new per-mount scrape targets in `scripts/scraper/main.py`'s `DEFAULT_*_SLUGS`/`DEFAULT_*_URLS` lists (these targets are curated per-mount, not crawled generically).
 
 ## Getting Started
 
-First, run the development server:
+The catalog pages read from Postgres, so set up a database connection
+before you start the server.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+1. Install dependencies.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+   ```bash
+   npm install
+   ```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+2. Copy the example environment file, and fill in a real `DATABASE_URL`.
+
+   ```bash
+   cp .env.example .env.local
+   ```
+
+   See `scripts/scraper/README.md` for how to populate this database with
+   real camera and lens data. Without `DATABASE_URL` set, the app still
+   runs, but the catalog and product pages render empty.
+
+3. Run the development server.
+
+   ```bash
+   npm run dev
+   ```
+
+4. Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+The home page is `app/[locale]/page.tsx`. Every route lives under the
+`[locale]` segment, for example `app/[locale]/cameras/page.tsx`.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 

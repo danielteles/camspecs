@@ -1,10 +1,10 @@
 # Scraper pipeline
 
 This folder holds a Python pipeline. The pipeline fetches camera and lens
-data from Wikidata and from manufacturer websites. It merges the records,
-then stores the result in a Postgres database. This pipeline builds the
-real data source that the CamSpecs app will use, in place of the static
-catalog in `lib/mock-data.ts`.
+data from a few different external sources. It merges the records, then
+stores the result in a Postgres database. The CamSpecs app reads its full
+camera and lens catalog from this database, through
+`lib/services/equipment.ts`.
 
 ## Requirements
 
@@ -59,13 +59,21 @@ Run these commands once, from this folder (`scripts/scraper/`).
 
 ## Project structure
 
-- `models/` — Pydantic schemas for `CameraSpecs` and `LensSpecs`, with
-  validators that correct raw scraped values.
-- `extractors/` — one module per data source: `wikidata.py` (SPARQL) and
-  `nikon.py` (Playwright).
-- `transformers/` — `merger.py`, which combines records from multiple
-  sources into one clean record per item.
-- `db/` — the Postgres connection, the ORM models, and the upsert logic.
+- `models/` — `camera.py` and `lens.py` hold the `CameraSpecs` and
+  `LensSpecs` Pydantic schemas, with validators that correct raw scraped
+  values. `enums.py` holds `SensorFormat` and its free-text normalizer.
+  `parsers.py` holds shared raw-value parsing helpers.
+- `extractors/` — one module per data source. `curated_fallbacks.py`
+  holds hand-sourced lookup tables for confirmed gaps in the other
+  sources, each entry commented with its origin.
+- `transformers/` — `merger.py` combines records from multiple sources
+  into one clean record per item, by a fixed source-priority order.
+  `sensor_fallback.py` fills in sensor dimensions for a record that
+  resolved a standard sensor format but got no exact millimeter values
+  from any source.
+- `db/` — `connection.py` (the async engine and session factory),
+  `schema.py` (the SQLAlchemy ORM models), and `upsert.py` (the upsert
+  logic).
 - `tests/` — runnable scripts that check each layer, with mock data or a
   live connection.
 - `main.py` — the pipeline orchestrator.
@@ -74,28 +82,25 @@ Run these commands once, from this folder (`scripts/scraper/`).
 
 Run each command from this folder, with the virtual environment active.
 
-Fetch camera and lens data from Wikidata:
+Run a single extractor module on its own, for testing:
 
 ```bash
-python -m extractors.wikidata --type both --limit 25
+python -m extractors.<module_name> --help
 ```
 
-Scrape a Nikon product page:
-
-```bash
-python -m extractors.nikon --url "https://www.nikonusa.com/p/z6iii/1890/overview"
-```
+Each module lists its own flags this way. This is useful when you want to
+check one source's output without running the full pipeline.
 
 Run the test scripts:
 
 ```bash
-python -m tests.test_schemas
-python -m tests.test_merger
-python -m tests.test_upsert
+python -m tests.<test_module_name>
 ```
 
-`test_upsert` needs a real Postgres connection, through `DATABASE_URL`. The
-other two tests use only mock data.
+`tests/` holds one runnable script per layer: schemas, merging, curated
+fallbacks, sensor backfill, per-source name normalization, and the
+database upsert. Only the upsert test needs a real Postgres connection,
+through `DATABASE_URL`. Every other test uses only mock data.
 
 Run the full pipeline:
 
@@ -114,13 +119,20 @@ python main.py --dry-run
 
 `main.py` runs five stages, in order, and logs the duration of each one.
 
-1. **Fetch.** The pipeline calls each extractor. It fetches Wikidata
-   cameras and lenses at the same time, then fetches each configured Nikon
-   page.
+1. **Fetch.** The pipeline calls each extractor. It fetches the
+   structured-data source's cameras and lenses at the same time, then
+   fetches each configured page from the other two sources. One source
+   failing on one page logs a warning and skips that page, rather than
+   stopping the whole run.
 2. **Merge.** `merger.py` combines records for the same item, from each
-   source, into one record. A manufacturer record wins a conflict over a
-   Wikidata record. An empty field on the winning record fills in from the
-   other source.
+   source, into one record. A manufacturer record wins a conflict over
+   the third-party site's record, which wins over the structured-data
+   source's record. An empty field on the winning record fills in from
+   the next source in that order. Four more steps then run: two fill in
+   known physical facts that no source supplies directly, one removes a
+   record whose sensor format can never resolve because only the
+   lowest-priority source ever contributed it, and one fills in a small,
+   named list of confirmed release-date gaps.
 3. **Validate.** Every record is already a Pydantic instance at this
    point, since each fetch and merge step validates its own output. This
    stage checks the final counts.
@@ -140,21 +152,40 @@ runs, Postgres already has the data.
 
 ## Data sources, and their limits
 
-- **Wikidata** gives broad coverage, through one SPARQL query per entity
-  type. Wikidata items rarely have a value for sensor format or
-  megapixels, for interchangeable-lens cameras. The pipeline stores
-  `"other"` for a missing sensor format, and leaves megapixels empty.
-- **Nikon's product pages** give detailed, accurate specifications, but
-  only for the pages listed in `DEFAULT_NIKON_URLS`, inside `main.py`.
-  Sony, Canon, and Panasonic block automated browsers with a WAF, from
-  common environments like this one.
+- A **structured public data source** gives broad coverage, through one
+  query per entity type, run separately per mount so a low-release-cadence
+  mount is not crowded out of its share of the result limit by a
+  high-cadence one. This source rarely has a value for sensor format,
+  sensor dimensions, or megapixels, for interchangeable-lens cameras. The
+  pipeline stores `"other"` for a missing sensor format, and leaves
+  megapixels and sensor dimensions empty, unless a fallback (below)
+  resolves them.
+- **Manufacturer product pages** give detailed, accurate specifications,
+  but only for the pages listed in `main.py`. Some manufacturer sites
+  block automated browsers outright, from common environments like this
+  one, so this source only covers the manufacturers whose pages allow it.
+- A **third-party specifications site** covers the same mounts the
+  manufacturer source only partly reaches. L-Mount and Micro Four Thirds
+  have no manufacturer or third-party source today, and rely on the
+  structured public data source alone. The specifications site has no
+  standalone lens pages for most mounts. A combined "camera + lens"
+  listing is scraped for its lens half instead, except for one lens
+  family, which does have its own standalone pages. This source needs a
+  real browser to fetch, not a lighter HTTP client, for reasons specific
+  to that site.
+- **Curated fallbacks** (`extractors/curated_fallbacks.py`) cover two
+  confirmed gaps no automated source can fill: the sensor format for
+  three single-format mounts, and the release year for a small list of
+  lens-kit slugs with no release-date value from any source. Each entry
+  names its reasoning in a comment.
 
 ## Current status
 
-The pipeline writes to its own Postgres database. The Next.js app still
-reads from `lib/mock-data.ts`. The app's data layer must still switch from
-`lib/mock-data.ts` to Postgres. This remains open, and appears again in
-`ARCHITECTURE.md`, under Known limitations.
+The pipeline writes to the same Postgres database the Next.js app reads
+from, through `lib/services/equipment.ts`. `ARCHITECTURE.md`'s Known
+limitations section lists what is still open, for example
+`getNativeCameraForLens`'s one-camera-per-mount simplification now that
+several real camera bodies share a mount.
 
 ## GitHub Actions
 
