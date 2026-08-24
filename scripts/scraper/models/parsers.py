@@ -58,8 +58,30 @@ def parse_crop_factor(value: Any) -> float | None:
     return parse_float(text)
 
 
+# L-mount is the one canonical MountId that keeps the literal word "mount"
+# in its own slug ("l-mount") — every other supported mount's slug has
+# "mount" stripped out entirely (sony-e, canon-rf, ...), so the generic
+# strip-the-word-"mount" rule below is correct for those but actively wrong
+# for this one: it turns an already-canonical "l-mount" into "l", and a
+# scraped label like "Leica L-Mount" into "leica-l", neither of which match
+# the app's actual MountId. Checked before the generic rule runs, keyed on a
+# whitespace/hyphen-collapsed lowercase form so "l-mount", "L-Mount", and
+# "Leica L-Mount" (all confirmed live: the first from Wikidata's QID-based
+# resolution in extractors/wikidata.py, which is otherwise correct until
+# this same generic rule reprocesses it; the second and third from
+# extractors/versus.py's raw scraped mount text) all resolve the same way.
+_MOUNT_ALIASES: dict[str, str] = {
+    "l mount": "l-mount",
+    "leica l mount": "l-mount",
+}
+_MOUNT_ALIAS_KEY_PATTERN = re.compile(r"[\s_-]+")
+
+
 def normalize_mount(value: str) -> str:
     """Normalize a mount name (e.g. "Sony E-mount") into a stable slug ("sony-e")."""
+    alias_key = _MOUNT_ALIAS_KEY_PATTERN.sub(" ", value.strip().lower()).strip()
+    if alias_key in _MOUNT_ALIASES:
+        return _MOUNT_ALIASES[alias_key]
     text = re.sub(r"(?i)\bmount\b", "", value.strip()).strip()
     text = re.sub(r"[\s_/]+", "-", text)
     text = re.sub(r"-+", "-", text).strip("-")

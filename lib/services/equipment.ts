@@ -17,6 +17,7 @@ const MOUNT_IDS: ReadonlySet<string> = new Set<MountId>([
   "fujifilm-g",
   "micro-four-thirds",
   "l-mount",
+  "leica-m",
 ]);
 
 const SENSOR_FORMATS: ReadonlySet<string> = new Set<SensorFormat>([

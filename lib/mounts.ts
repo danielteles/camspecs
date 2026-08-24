@@ -24,4 +24,8 @@ export const MOUNTS: Record<MountId, Mount> = {
     flangeDistanceMm: 19.25,
   },
   "l-mount": { id: "l-mount", name: "L-Mount", flangeDistanceMm: 20.0 },
+  // 27.95mm per Wikidata's Leica M mount item (Q313909, property P2043
+  // "length"), cross-checked against its P2386 "diameter" of 44mm, which
+  // matches Leica's well-documented 44mm M-mount bayonet spec.
+  "leica-m": { id: "leica-m", name: "Leica M", flangeDistanceMm: 27.95 },
 };

@@ -78,6 +78,66 @@ _PAGE_SETTLED_JS = (
 )
 _NOT_FOUND_TITLE = "Not found"
 
+# Category hub pages, not product pages — each lists every product Versus
+# has under that category as a plain <a href="/en/{slug}"> link in
+# server-rendered HTML. Verified live: both are static single-load pages,
+# not paginated or infinite-scroll (`?page=2` and a full scroll-to-bottom
+# both returned the identical 127/132-link set), so one page load per hub is
+# enough to enumerate everything Versus has. Same AWS WAF constraint as
+# product pages applies (see module docstring) — Playwright required,
+# curl_cffi never gets past the challenge.
+_HUB_PATHS = {"camera": "camera", "lens": "camera-lens"}
+_HUB_URL = "https://versus.com/en/{path}"
+# A hub page is "settled" once its product grid has rendered — picked over
+# waiting a fixed delay since the WAF challenge resolution time is variable.
+# 20 is well under the true count (127/132 verified live) but far above the
+# ~13-item site nav/footer link set that's present before the grid loads, so
+# it can't false-positive on the pre-render DOM.
+_HUB_SETTLED_JS = "() => document.querySelectorAll('a[href^=\"/en/\"]').length > 20"
+
+# A discovered slug is treated as a real product page only if its leading
+# hyphen-segment matches a known equipment brand. Verified live against
+# versus.com/en/camera and /en/camera-lens: every non-product link on those
+# two hub pages is either site nav/footer noise (/en/phone, /en/cpu, /en/tv,
+# /en/laptop, /en/headphone, /en/tablet, /en/graphics-card, /en/news,
+# /en/glossary, /en/categories, /en/suggest-product) or the hub's own
+# self-link (/en/camera, /en/camera-lens) or a sub-filter path
+# (/en/camera/top, /en/camera-lens/canon) — none of which start with a brand
+# token, so this single check replaces a separately maintained denylist.
+# Ricoh/Pentax are included even though Ricoh's GR line is fixed-lens (no
+# interchangeable mount): a slug that doesn't validate as CameraSpecs is
+# already skipped gracefully by main.py's per-slug fetch loop, so being
+# slightly inclusive here costs nothing.
+KNOWN_BRAND_PREFIXES = (
+    "sony",
+    "canon",
+    "nikon",
+    "fujifilm",
+    "panasonic",
+    "olympus",
+    "om-system",
+    "leica",
+    "hasselblad",
+    "pentax",
+    "ricoh",
+    "sigma",
+    "tamron",
+    "zeiss",
+    "viltrox",
+    "samyang",
+    "yongnuo",
+    "meike",
+    "tokina",
+    "voigtlander",
+    "laowa",
+    "irix",
+    "7artisans",
+)
+# Versus's own comparison pages ("X vs Y") share the product-page URL shape
+# and pass the brand-prefix check (the left-hand product is always a real
+# brand), so they need a dedicated exclusion.
+_COMPARISON_MARKER = "-vs-"
+
 
 class VersusSlugError(RuntimeError):
     """Raised when a Versus.com slug doesn't resolve to a real product page.
@@ -181,6 +241,71 @@ async def _fetch_rendered_soup(slug: str) -> BeautifulSoup:
     raise RuntimeError(f"Failed to fetch {url} after {MAX_ATTEMPTS} attempts") from last_exc
 
 
+async def _fetch_hub_links(path: str) -> list[str]:
+    """Navigate to a Versus.com category hub page and return every raw `/en/...` href on it.
+
+    Retries the whole navigation like `_fetch_rendered_soup` does, for the
+    same reason: a failure here is almost always the WAF challenge not
+    having resolved in time, which a fresh load recovers from.
+    """
+    url = _HUB_URL.format(path=path)
+    last_exc: Exception | None = None
+    for attempt in range(1, MAX_ATTEMPTS + 1):
+        try:
+            async with async_playwright() as pw:
+                browser = await pw.chromium.launch(headless=True)
+                try:
+                    page = await browser.new_page(user_agent=USER_AGENT)
+                    await page.goto(url, timeout=NAV_TIMEOUT_MS, wait_until="domcontentloaded")
+                    await page.wait_for_function(_HUB_SETTLED_JS, timeout=SPEC_TABLE_TIMEOUT_MS)
+                    return await page.eval_on_selector_all(
+                        "a[href^='/en/']", "els => els.map(e => e.getAttribute('href'))"
+                    )
+                finally:
+                    await browser.close()
+        except PlaywrightTimeoutError as exc:
+            last_exc = exc
+            logger.warning(
+                "Hub fetch attempt %d/%d for %s failed: %s", attempt, MAX_ATTEMPTS, path, exc
+            )
+    raise RuntimeError(f"Failed to fetch {url} after {MAX_ATTEMPTS} attempts") from last_exc
+
+
+def _is_product_slug(slug: str) -> bool:
+    if "/" in slug or _COMPARISON_MARKER in slug:
+        return False
+    return any(slug == prefix or slug.startswith(f"{prefix}-") for prefix in KNOWN_BRAND_PREFIXES)
+
+
+async def discover_camera_slugs() -> list[str]:
+    """Crawl versus.com/en/camera and return every real camera product slug found there."""
+    hrefs = await _fetch_hub_links(_HUB_PATHS["camera"])
+    slugs = {href.removeprefix("/en/") for href in hrefs}
+    return sorted(slug for slug in slugs if _is_product_slug(slug))
+
+
+async def discover_lens_slugs() -> list[str]:
+    """Crawl versus.com/en/camera-lens and return every real lens product slug found there.
+
+    These are standalone lens pages, not "camera + lens" kit slugs — Versus
+    has expanded standalone lens coverage since `DEFAULT_VERSUS_LENS_SLUGS`
+    in main.py was curated (verified live: e.g. `sony-fe-24-70mm-f-2-8-gm-ii`
+    has its own full spec table with lens-owned weight/release-date, not a
+    kit page). `map_lens_specs`'s existing `is_kit_page` check already
+    handles this shape correctly with no changes needed — it was never
+    Fujifilm-GF-specific in implementation, only in which slugs had been
+    curated by hand so far.
+    """
+    hrefs = await _fetch_hub_links(_HUB_PATHS["lens"])
+    slugs = {href.removeprefix("/en/") for href in hrefs}
+    return sorted(slug for slug in slugs if _is_product_slug(slug))
+
+
+async def discover_all_slugs() -> tuple[list[str], list[str]]:
+    """Run both hub crawls concurrently. Returns (camera_slugs, lens_slugs)."""
+    return await asyncio.gather(discover_camera_slugs(), discover_lens_slugs())
+
+
 def map_camera_specs(soup: BeautifulSoup, slug: str) -> dict[str, Any]:
     """Map a scraped Versus product page's DOM into a raw CameraSpecs dict."""
     payload = _extract_payload(soup)
@@ -210,19 +335,21 @@ def map_camera_specs(soup: BeautifulSoup, slug: str) -> dict[str, Any]:
 def map_lens_specs(soup: BeautifulSoup, slug: str) -> dict[str, Any]:
     """Map a scraped Versus lens page's DOM into a raw LensSpecs dict.
 
-    Two page shapes exist here, verified live. Most mounts (Sony E, Canon
-    RF, Nikon Z, Fujifilm X) only have "camera + lens" kit pages — Versus
-    has no standalone product page for those lenses at all — so
-    `display_name` there is "Camera Name + Lens Name" and only the lens half
-    is used; weight and release date on a kit page are the *camera's*
-    figures (verified: identical to the camera's solo page), so they're
-    deliberately left unmapped rather than mis-attributed to the lens.
-    Fujifilm's GF (medium format) lenses are a confirmed exception: they
-    have real standalone lens pages of their own (e.g.
-    "fujifilm-gf-63mm-f-2-8-r-wr"), where `display_name` is just the lens's
-    own name with no " + " delimiter — detected here via `is_kit_page`. On
-    a standalone page there's no camera to conflate with, so weight and
-    release date genuinely belong to the lens and are safe to map.
+    Two page shapes exist here, verified live. `DEFAULT_VERSUS_LENS_SLUGS`
+    in main.py (curated before standalone lens coverage was found) is built
+    entirely from "camera + lens" kit pages, where `display_name` is "Camera
+    Name + Lens Name" and only the lens half is used; weight and release
+    date on a kit page are the *camera's* figures (verified: identical to
+    the camera's solo page), so they're deliberately left unmapped rather
+    than mis-attributed to the lens. But kit pages are not the only shape:
+    Fujifilm's GF (medium format) lenses were the first confirmed standalone
+    exception, and `discover_lens_slugs` (this module) has since found many
+    more — real standalone lens pages across Sony E, Canon EF/RF, Nikon Z,
+    Sigma, and others (e.g. "sony-fe-24-70mm-f-2-8-gm-ii"), where
+    `display_name` is just the lens's own name with no " + " delimiter —
+    detected here via `is_kit_page`. On a standalone page there's no camera
+    to conflate with, so weight and release date genuinely belong to the
+    lens and are safe to map.
     """
     payload = _extract_payload(soup)
     display_name = _product_display_name(soup, payload)
@@ -270,15 +397,45 @@ async def fetch_lens(slug: str = DEFAULT_LENS_KIT_SLUG) -> LensSpecs:
         raise
 
 
+def _brands_in(slugs: list[str]) -> list[str]:
+    return sorted(
+        {prefix for prefix in KNOWN_BRAND_PREFIXES if any(slug.startswith(f"{prefix}-") for slug in slugs)}
+    )
+
+
+async def _run_discover(kind: str) -> None:
+    if kind in ("camera", "all"):
+        cameras = await discover_camera_slugs()
+        brands = _brands_in(cameras)
+        print(f"Discovered {len(cameras)} camera slug(s) across {len(brands)} brand(s): {brands}")
+        for slug in cameras:
+            print(f"  {slug}")
+    if kind in ("lens", "all"):
+        lenses = await discover_lens_slugs()
+        brands = _brands_in(lenses)
+        print(f"Discovered {len(lenses)} lens slug(s) across {len(brands)} brand(s): {brands}")
+        for slug in lenses:
+            print(f"  {slug}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Scrape a Versus.com camera or lens page.")
     parser.add_argument("--type", choices=["camera", "lens"], default="camera")
     parser.add_argument("--slug", default=None, help="Versus product slug (default depends on --type)")
+    parser.add_argument(
+        "--discover",
+        choices=["camera", "lens", "all"],
+        default=None,
+        help="Instead of scraping one page, crawl the versus.com category hub(s) and list every "
+        "discovered product slug",
+    )
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
-    if args.type == "camera":
+    if args.discover:
+        asyncio.run(_run_discover(args.discover))
+    elif args.type == "camera":
         camera = asyncio.run(fetch_camera(args.slug or DEFAULT_CAMERA_SLUG))
         print(camera.model_dump_json(indent=2))
     else:

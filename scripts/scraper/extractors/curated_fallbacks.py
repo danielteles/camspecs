@@ -40,8 +40,8 @@ MOUNT_SENSOR_FORMATS: dict[str, SensorFormat] = {
 # lens-kit items `main.py`'s VERSUS_LENS_WIKIDATA_QIDS comment already
 # documents as checked live, one QID at a time, and confirmed to carry no
 # P577 (publication date) or P6949 (announcement date) statement on Wikidata
-# at all — a genuine upstream gap, not a query-limit issue that a bigger
-# --wikidata-limit would fix. (The 6th lens-kit item, sony-fe-50mm-f1-8,
+# at all — a genuine upstream gap, not a query-limit issue a bigger
+# --wikidata-lens-limit would fix. (The 6th lens-kit item, sony-fe-50mm-f1-8,
 # isn't here because its Wikidata record *does* have a date and is already
 # backfilled dynamically by that QID lookup.)
 #

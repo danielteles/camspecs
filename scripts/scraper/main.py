@@ -166,8 +166,46 @@ class Timer:
         logger.info("<- %s (%s) in %.2fs", self.label, status, self.elapsed)
 
 
+def _merge_unique(curated: list[str], discovered: list[str]) -> list[str]:
+    """Curated slugs first (so the QID backfill maps above still line up by value), then any newly discovered slug not already covered."""
+    seen = set(curated)
+    return curated + [slug for slug in discovered if slug not in seen]
+
+
+# The single allowlist every fetched record's mount is checked against,
+# regardless of source. extractors/wikidata.py's SPARQL queries already only
+# ever bind ?mount to one of MOUNT_QIDS's keys, so this is a no-op there —
+# but extractors/versus.py has no equivalent query-level restriction (it
+# fetches by slug, then reads whatever mount text the page has), so nothing
+# upstream of this stops a DSLR/legacy-mount or not-yet-approved-mount
+# product from reaching the DB otherwise. Confirmed live: enabling
+# versus.discover_all_slugs()'s brand-only filter (see extractors/versus.py)
+# let Canon EF, Nikon F, Pentax K, Sony A-mount, and Hasselblad X-mount
+# records all the way through to a real upsert before this check existed.
+# Applied once here, after every source's fetch, rather than per-source, so
+# it can never be bypassed by a future source that forgets its own check.
+SUPPORTED_MOUNTS = frozenset(wikidata.MOUNT_QIDS.keys())
+
+
+def _drop_unsupported_mounts(
+    cameras: list[CameraSpecs], lenses: list[LensSpecs]
+) -> tuple[list[CameraSpecs], list[LensSpecs]]:
+    kept_cameras = [c for c in cameras if c.mount in SUPPORTED_MOUNTS]
+    kept_lenses = [l for l in lenses if l.mount in SUPPORTED_MOUNTS]
+    dropped_cameras = len(cameras) - len(kept_cameras)
+    dropped_lenses = len(lenses) - len(kept_lenses)
+    if dropped_cameras or dropped_lenses:
+        logger.warning(
+            "Dropped %d camera(s), %d lens(es) with an unsupported mount",
+            dropped_cameras,
+            dropped_lenses,
+        )
+    return kept_cameras, kept_lenses
+
+
 async def fetch_all(
-    wikidata_limit: int,
+    wikidata_camera_limit: int,
+    wikidata_lens_limit: int,
     nikon_urls: list[str],
     versus_camera_slugs: list[str],
     versus_lens_slugs: list[str],
@@ -179,8 +217,8 @@ async def fetch_all(
         headers={"User-Agent": wikidata.USER_AGENT}, timeout=wikidata.REQUEST_TIMEOUT_S
     ) as client:
         wikidata_cameras, wikidata_lenses = await asyncio.gather(
-            wikidata.fetch_cameras(client, wikidata_limit),
-            wikidata.fetch_lenses(client, wikidata_limit),
+            wikidata.fetch_cameras(client, wikidata_camera_limit),
+            wikidata.fetch_lenses(client, wikidata_lens_limit),
         )
     cameras.extend(wikidata_cameras)
     lenses.extend(wikidata_lenses)
@@ -257,13 +295,31 @@ async def revalidate_site(
 async def run_pipeline(args: argparse.Namespace) -> None:
     pipeline_start = time.perf_counter()
 
+    versus_camera_slugs = args.versus_camera_slugs
+    versus_lens_slugs = args.versus_lens_slugs
+    if args.discover_versus_slugs:
+        with Timer("Discover Versus slugs"):
+            discovered_cameras, discovered_lenses = await versus.discover_all_slugs()
+        versus_camera_slugs = _merge_unique(versus_camera_slugs, discovered_cameras)
+        versus_lens_slugs = _merge_unique(versus_lens_slugs, discovered_lenses)
+        logger.info(
+            "Discovery added %d camera slug(s), %d lens slug(s) to the curated defaults",
+            len(versus_camera_slugs) - len(args.versus_camera_slugs),
+            len(versus_lens_slugs) - len(args.versus_lens_slugs),
+        )
+
     with Timer("Fetch") as t_fetch:
         raw_cameras, raw_lenses = await fetch_all(
-            args.wikidata_limit, args.nikon_urls, args.versus_camera_slugs, args.versus_lens_slugs
+            args.wikidata_camera_limit,
+            args.wikidata_lens_limit,
+            args.nikon_urls,
+            versus_camera_slugs,
+            versus_lens_slugs,
         )
     logger.info(
         "Fetched %d raw camera record(s), %d raw lens record(s)", len(raw_cameras), len(raw_lenses)
     )
+    raw_cameras, raw_lenses = _drop_unsupported_mounts(raw_cameras, raw_lenses)
 
     with Timer("Merge") as t_merge:
         cameras = merge_records(raw_cameras)
@@ -332,14 +388,21 @@ async def run_pipeline(args: argparse.Namespace) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run the full camspecs scraper pipeline.")
     parser.add_argument(
-        "--wikidata-limit",
+        "--wikidata-camera-limit",
         type=int,
-        default=25,
+        default=150,
         help=(
-            "Entity budget per type from Wikidata, split evenly across mounts so a "
+            "Camera entity budget from Wikidata, split evenly across mounts so a "
             "low-cadence mount (e.g. Fujifilm G) isn't crowded out of its share by a "
             "high-cadence one (see extractors/wikidata.py's _per_mount_limit)"
         ),
+    )
+    parser.add_argument(
+        "--wikidata-lens-limit",
+        type=int,
+        default=200,
+        help="Lens entity budget from Wikidata, split evenly across mounts (same reasoning "
+        "as --wikidata-camera-limit)",
     )
     parser.add_argument(
         "--nikon-urls",
@@ -358,6 +421,12 @@ def main() -> None:
         nargs="*",
         default=DEFAULT_VERSUS_LENS_SLUGS,
         help="Versus.com 'camera + lens' kit slugs to scrape for their lens half",
+    )
+    parser.add_argument(
+        "--discover-versus-slugs",
+        action="store_true",
+        help="Crawl versus.com/en/camera and /en/camera-lens for additional slugs, merged with "
+        "--versus-camera-slugs / --versus-lens-slugs before fetching",
     )
     parser.add_argument(
         "--site-url",

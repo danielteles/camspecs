@@ -1,8 +1,8 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+[`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app) created this [Next.js](https://nextjs.org) project.
 
 ## Architecture: supported mounts
 
-CamSpecs is scoped to **current mirrorless interchangeable-lens systems only**. DSLR and other legacy mounts (Canon EF, Nikon F, Sony A-mount, etc.) are intentionally excluded — this is a deliberate product decision, not a gap to be filled.
+CamSpecs covers **current mirrorless interchangeable-lens systems only**. This excludes DSLR and other legacy mounts, such as Canon EF, Nikon F, and Sony A-mount. This exclusion is a deliberate product decision, not a missing feature.
 
 | Mount             | `MountId`           | Flange distance |
 | ----------------- | ------------------- | --------------- |
@@ -13,21 +13,26 @@ CamSpecs is scoped to **current mirrorless interchangeable-lens systems only**. 
 | Fujifilm G        | `fujifilm-g`        | 26.7 mm         |
 | Micro Four Thirds | `micro-four-thirds` | 19.25 mm        |
 | L-Mount           | `l-mount`           | 20.0 mm         |
+| Leica M           | `leica-m`           | 27.95 mm        |
 
-**Why mirrorless-only:** the site's core value — crop-factor and field-of-view equivalence across systems — matters most to buyers actively choosing among current mirrorless systems. Every mount above is still in active production; legacy DSLR mounts are not, and mixing a decades-deep DSLR catalog into a mirrorless-comparison tool would dilute rather than serve that use case. Fujifilm G is included on this basis too — it's a currently-produced mirrorless medium-format system (Fujifilm GFX), not a legacy mount; its `sensor_format` is `medium-format`, already backfilled to the real GFX sensor size (43.8 × 32.9 mm) by `scripts/scraper/transformers/sensor_fallback.py`.
+**Why mirrorless-only:** the site's core value is crop-factor and field-of-view equivalence across systems. This matters most to buyers who compare current mirrorless systems. Every mount in the table above is still in active production. Legacy DSLR mounts are not in active production. A mirrorless-comparison tool with a decades-deep DSLR catalog dilutes the comparison instead of serving this use case.
 
-**Where this is enforced** (three independent points — a mount unsupported at any one of them never reaches a user):
+Fujifilm G is included on this same basis. It is a currently produced mirrorless medium-format system (Fujifilm GFX), not a legacy mount. Its `sensor_format` is `medium-format`. `scripts/scraper/transformers/sensor_fallback.py` already backfills this value to the real GFX sensor size (43.8 × 32.9 mm).
 
-- The scraper's structured-data extractor, in `scripts/scraper/extractors/`, only queries for items using one of these mount identifiers, so nothing else enters the pipeline from that source in the first place.
-- `lib/types.ts`'s `MountId` union and `lib/mounts.ts`'s `MOUNTS` registry — the only mount values the frontend can represent at all.
-- `lib/services/equipment.ts`'s `MOUNT_IDS` — the DB read boundary: a row with any other mount value is logged and skipped rather than shown. This exists because the Postgres `mount` column itself has no enum constraint (a plain `String` in `scripts/scraper/db/schema.py`'s `CameraRecord`/`LensRecord`) — nothing at the database level stops a future source or manual insert from writing an unsupported mount, so the frontend re-checks rather than trusting the schema.
+Leica M is included on the same basis. It is a currently produced digital rangefinder system with no reflex mirror, for example M11 and M10-P. Leica still makes new M-mount bodies, so M-mount is not a legacy mount either.
 
-**If DSLR support is ever added**, it needs new entries at all three enforcement points above, plus mount-specific flange-distance data and new per-mount scrape targets in `scripts/scraper/main.py`'s `DEFAULT_*_SLUGS`/`DEFAULT_*_URLS` lists (these targets are curated per-mount, not crawled generically).
+**Where this is enforced:** three independent points enforce this rule. An unsupported mount never reaches a user at these points:
+
+- The scraper's structured-data extractor, in `scripts/scraper/extractors/`, only queries for items that use one of these mount identifiers. As a result, no other mount enters the pipeline from this source.
+- `lib/types.ts`'s `MountId` union and `lib/mounts.ts`'s `MOUNTS` registry are the only place the frontend can represent mount values.
+- `lib/services/equipment.ts` logs and skips a row with an unsupported mount value, instead of showing it. This check exists because the Postgres `mount` column has no enum constraint. It is a plain `String` in `scripts/scraper/db/schema.py`'s `CameraRecord`/`LensRecord`. A future source or a manual insert can write an unsupported mount value, so the frontend checks the value again instead of trusting the schema.
+
+**If DSLR support is ever added**, it needs new entries at all three enforcement points above. It also needs mount-specific flange-distance data and new per-mount scrape targets in `scripts/scraper/main.py`'s `DEFAULT_*_SLUGS`/`DEFAULT_*_URLS` lists. We curate these targets per mount. We do not crawl them in a generic way.
 
 ## Getting Started
 
-The catalog pages read from Postgres, so set up a database connection
-before you start the server.
+The catalog pages get their data from Postgres. Before you start the
+server, set up a database connection.
 
 1. Install dependencies.
 
@@ -35,14 +40,14 @@ before you start the server.
    npm install
    ```
 
-2. Copy the example environment file, and fill in a real `DATABASE_URL`.
+2. Copy the example environment file. Fill in a real `DATABASE_URL`.
 
    ```bash
    cp .env.example .env.local
    ```
 
    See `scripts/scraper/README.md` for how to populate this database with
-   real camera and lens data. Without `DATABASE_URL` set, the app still
+   real camera and lens data. If `DATABASE_URL` is not set, the app still
    runs, but the catalog and product pages render empty.
 
 3. Run the development server.
@@ -61,18 +66,18 @@ This project uses [`next/font`](https://nextjs.org/docs/app/building-your-applic
 ## Catalog filtering
 
 `/cameras` and `/lenses` support faceted filtering. Every filter is a URL
-query parameter. A filtered view is a plain link — copy it, send it, or
-bookmark it, and it opens to the same results. For example:
+query parameter. A filtered view is a plain link. You can copy it, send
+it, or bookmark it. It always opens to the same results. For example:
 
 ```
 /en/cameras?sensor=full-frame&brand=Sony&min_megapixels=24
 ```
 
 The server reads filters and applies them as a real SQL `WHERE` clause
-(`lib/services/equipment.ts`). The browser does not filter results after
-the fact. The app computes facet option counts (for example "Sony (3)")
-against the full catalog, so a category never shows the wrong number,
-even before you touch a checkbox.
+(`lib/services/equipment.ts`). The browser does not filter results again.
+The app computes facet option counts, for example "Sony (3)", against the
+full catalog. As a result, a count is correct even before you select a
+checkbox.
 
 **`/cameras` parameters:**
 
@@ -94,23 +99,23 @@ even before you touch a checkbox.
 | `min_focal` / `max_focal` | number, mm (matches a lens whose range overlaps this window) | `min_focal=24&max_focal=70` |
 | `max_aperture`            | number (f-number, lower = faster)                            | `max_aperture=2.8`          |
 
-You can omit any parameter, or combine several freely. The app treats
-an unset or invalid value as "no filter," not as an error. See
+You can omit a parameter, or combine several parameters freely. The app
+treats an unset or invalid value as "no filter," not as an error. See
 `lib/catalog-params.ts` for the parsing and serialization rules. See
 `ARCHITECTURE.md`'s "Catalog browse pages" section for how filter state
 flows from the URL to the SQL query.
 
 ## Learn More
 
-To learn more about Next.js, take a look at the following resources:
+For more about Next.js, see these resources:
 
 - [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
 - [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+You can visit [the Next.js GitHub repository](https://github.com/vercel/next.js). Feedback and contributions are welcome!
 
 ## Deploy on Vercel
 
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+See the [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
