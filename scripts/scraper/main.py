@@ -172,6 +172,37 @@ def _merge_unique(curated: list[str], discovered: list[str]) -> list[str]:
     return curated + [slug for slug in discovered if slug not in seen]
 
 
+# The single allowlist every fetched record's mount is checked against,
+# regardless of source. extractors/wikidata.py's SPARQL queries already only
+# ever bind ?mount to one of MOUNT_QIDS's keys, so this is a no-op there —
+# but extractors/versus.py has no equivalent query-level restriction (it
+# fetches by slug, then reads whatever mount text the page has), so nothing
+# upstream of this stops a DSLR/legacy-mount or not-yet-approved-mount
+# product from reaching the DB otherwise. Confirmed live: enabling
+# versus.discover_all_slugs()'s brand-only filter (see extractors/versus.py)
+# let Canon EF, Nikon F, Pentax K, Sony A-mount, and Hasselblad X-mount
+# records all the way through to a real upsert before this check existed.
+# Applied once here, after every source's fetch, rather than per-source, so
+# it can never be bypassed by a future source that forgets its own check.
+SUPPORTED_MOUNTS = frozenset(wikidata.MOUNT_QIDS.keys())
+
+
+def _drop_unsupported_mounts(
+    cameras: list[CameraSpecs], lenses: list[LensSpecs]
+) -> tuple[list[CameraSpecs], list[LensSpecs]]:
+    kept_cameras = [c for c in cameras if c.mount in SUPPORTED_MOUNTS]
+    kept_lenses = [l for l in lenses if l.mount in SUPPORTED_MOUNTS]
+    dropped_cameras = len(cameras) - len(kept_cameras)
+    dropped_lenses = len(lenses) - len(kept_lenses)
+    if dropped_cameras or dropped_lenses:
+        logger.warning(
+            "Dropped %d camera(s), %d lens(es) with an unsupported mount",
+            dropped_cameras,
+            dropped_lenses,
+        )
+    return kept_cameras, kept_lenses
+
+
 async def fetch_all(
     wikidata_camera_limit: int,
     wikidata_lens_limit: int,
@@ -288,6 +319,7 @@ async def run_pipeline(args: argparse.Namespace) -> None:
     logger.info(
         "Fetched %d raw camera record(s), %d raw lens record(s)", len(raw_cameras), len(raw_lenses)
     )
+    raw_cameras, raw_lenses = _drop_unsupported_mounts(raw_cameras, raw_lenses)
 
     with Timer("Merge") as t_merge:
         cameras = merge_records(raw_cameras)
