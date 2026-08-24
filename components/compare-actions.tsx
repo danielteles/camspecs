@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 
+import { useCompareTransition } from "@/components/compare-transition-provider";
 import { Button } from "@/components/ui/button";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import {
@@ -20,6 +21,7 @@ export function CompareActions() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { startTransition } = useCompareTransition();
   const [copied, setCopied] = useState(false);
 
   const slugs = parseCompareItems(searchParams.get(COMPARE_ITEMS_PARAM));
@@ -34,19 +36,21 @@ export function CompareActions() {
       return;
     }
 
-    router.replace(
-      {
-        pathname,
-        query: {
-          [COMPARE_ITEMS_PARAM]: serializeCompareItems([
-            second,
-            first,
-            ...rest,
-          ]),
+    startTransition(() => {
+      router.replace(
+        {
+          pathname,
+          query: {
+            [COMPARE_ITEMS_PARAM]: serializeCompareItems([
+              second,
+              first,
+              ...rest,
+            ]),
+          },
         },
-      },
-      { scroll: false },
-    );
+        { scroll: false },
+      );
+    });
   }
 
   async function handleCopyLink() {

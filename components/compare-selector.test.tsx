@@ -3,12 +3,21 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { CompareSelector } from "@/components/compare-selector";
+import { CompareTransitionProvider } from "@/components/compare-transition-provider";
 import {
   mockRouterReplace,
   mockUsePathname,
   mockUseSearchParams,
 } from "@/test/mocks/navigation";
 import { installSearchFetchMock } from "@/test/mocks/search-fetch";
+
+function renderCompareSelector() {
+  return render(
+    <CompareTransitionProvider>
+      <CompareSelector />
+    </CompareTransitionProvider>,
+  );
+}
 
 describe("CompareSelector", () => {
   beforeEach(() => {
@@ -19,7 +28,7 @@ describe("CompareSelector", () => {
 
   it("searches the catalog and adds the selected item to the comparison", async () => {
     const user = userEvent.setup();
-    render(<CompareSelector />);
+    renderCompareSelector();
 
     await user.click(
       screen.getByRole("button", { name: "Add a camera or lens…" }),
@@ -49,7 +58,7 @@ describe("CompareSelector", () => {
       new URLSearchParams("items=sony-a7-iv"),
     );
 
-    render(<CompareSelector />);
+    renderCompareSelector();
 
     expect(
       await screen.findByText("Sony Alpha 7 IV", {}, { timeout: 2000 }),
@@ -65,7 +74,7 @@ describe("CompareSelector", () => {
       new URLSearchParams("items=sony-a7-iv"),
     );
 
-    render(<CompareSelector />);
+    renderCompareSelector();
 
     await screen.findByText("Sony Alpha 7 IV", {}, { timeout: 2000 });
     await user.click(
@@ -84,7 +93,7 @@ describe("CompareSelector", () => {
 
   it("shows an empty state when the search has no matches", async () => {
     const user = userEvent.setup();
-    render(<CompareSelector />);
+    renderCompareSelector();
 
     await user.click(
       screen.getByRole("button", { name: "Add a camera or lens…" }),
