@@ -80,20 +80,37 @@ _NOT_FOUND_TITLE = "Not found"
 
 # Category hub pages, not product pages — each lists every product Versus
 # has under that category as a plain <a href="/en/{slug}"> link in
-# server-rendered HTML. Verified live: both are static single-load pages,
-# not paginated or infinite-scroll (`?page=2` and a full scroll-to-bottom
-# both returned the identical 127/132-link set), so one page load per hub is
-# enough to enumerate everything Versus has. Same AWS WAF constraint as
-# product pages applies (see module docstring) — Playwright required,
-# curl_cffi never gets past the challenge.
+# server-rendered HTML. A prior version of this comment claimed both hubs
+# were static single-load pages based on `?page=2` and scroll-to-bottom
+# returning an identical 127/132-link set — that check was incomplete and
+# the conclusion was wrong. Verified live: the grid is paginated per
+# category *section* (e.g. "Mirrorless", "DSLR", "Compact") behind a
+# client-side "Show more" button that neither URL params nor scrolling
+# trigger — only clicking it does. Confirmed live on /en/camera: the raw
+# link count on first render is 127, but clicking every "Show more" button
+# to exhaustion (each click can reveal a further one for the same section)
+# grows it to 981, and Canon's own slug count alone goes from 15 to 160.
+# See `_expand_hub_page`. Same AWS WAF constraint as product pages applies
+# (see module docstring) — Playwright required, curl_cffi never gets past
+# the challenge.
 _HUB_PATHS = {"camera": "camera", "lens": "camera-lens"}
 _HUB_URL = "https://versus.com/en/{path}"
-# A hub page is "settled" once its product grid has rendered — picked over
-# waiting a fixed delay since the WAF challenge resolution time is variable.
-# 20 is well under the true count (127/132 verified live) but far above the
-# ~13-item site nav/footer link set that's present before the grid loads, so
-# it can't false-positive on the pre-render DOM.
+# A hub page's *first* render is "settled" once its product grid has
+# rendered — picked over waiting a fixed delay since the WAF challenge
+# resolution time is variable. 20 is well under the pre-expansion count
+# (127/132 verified live) but far above the ~13-item site nav/footer link
+# set present before the grid loads, so it can't false-positive on the
+# pre-render DOM. This only detects the *initial* grid — `_expand_hub_page`
+# handles paginating the rest via "Show more".
 _HUB_SETTLED_JS = "() => document.querySelectorAll('a[href^=\"/en/\"]').length > 20"
+# Exact text on every "Show more" pagination control, verified live across
+# all sections on both /en/camera and /en/camera-lens.
+_SHOW_MORE_TEXT = "Show more"
+# Safety cap on the expand loop, well above the 18 clicks verified live to
+# fully exhaust /en/camera's sections — guards against the loop never
+# terminating if a future site change makes the button reappear instead of
+# vanishing once a section is fully expanded.
+MAX_SHOW_MORE_CLICKS = 300
 
 # A discovered slug is treated as a real product page only if its leading
 # hyphen-segment matches a known equipment brand. Verified live against
@@ -174,11 +191,29 @@ def _parse_release_year(text: str | None) -> int | None:
     return int(match.group(1)) if match else None
 
 
+
+# OM System is the one brand in KNOWN_BRAND_PREFIXES that isn't a single
+# word, so the naive first-space split below mis-parses it: a camera page's
+# "OM System OM-1 Mark II" split on the first space alone yields
+# brand="OM", model="System OM-1 Mark II" — the word "System" leaks into
+# the model text as well as the brand being truncated. Confirmed live:
+# lens pages hyphenate it instead ("OM-System M.Zuiko..."), which the
+# naive split parses correctly as one token — so this only bites camera
+# pages. Checked case-insensitively and before the generic split.
+_MULTI_WORD_BRAND_PREFIXES = ("OM System",)
+
+
 def _split_brand_model(display_name: str) -> tuple[str, str]:
     # Versus doesn't expose brand/model as separate fields, only a combined
-    # display name ("Sony Alpha 7 IV"). Every brand on the site is a single
-    # word, so splitting on the first space is reliable in practice.
-    parts = display_name.strip().split(" ", 1)
+    # display name ("Sony Alpha 7 IV"). Every brand on the site but OM
+    # System (see _MULTI_WORD_BRAND_PREFIXES) is a single word, so splitting
+    # on the first space is reliable for everything else.
+    stripped = display_name.strip()
+    for brand in _MULTI_WORD_BRAND_PREFIXES:
+        if stripped.lower().startswith(brand.lower() + " "):
+            return brand, stripped[len(brand) :].strip()
+
+    parts = stripped.split(" ", 1)
     if len(parts) == 2:
         return parts[0], parts[1]
     return parts[0], ""
@@ -241,6 +276,45 @@ async def _fetch_rendered_soup(slug: str) -> BeautifulSoup:
     raise RuntimeError(f"Failed to fetch {url} after {MAX_ATTEMPTS} attempts") from last_exc
 
 
+async def _expand_hub_page(page: Any) -> int:
+    """Click every "Show more" button on a hub page until none remain.
+
+    Each click can reveal a further "Show more" for the same section (18
+    clicks were needed to fully exhaust /en/camera, verified live), so this
+    loops on presence of the button rather than clicking once per section.
+    Always re-queries via `get_by_text` instead of caching a locator list,
+    since clicking reflows the DOM and can invalidate stale handles.
+    """
+    clicks = 0
+    for _ in range(MAX_SHOW_MORE_CLICKS):
+        buttons = page.get_by_text(_SHOW_MORE_TEXT, exact=True)
+        if await buttons.count() == 0:
+            break
+        link_count_js = "() => document.querySelectorAll('a[href^=\"/en/\"]').length"
+        before = await page.evaluate(link_count_js)
+        try:
+            await buttons.first.scroll_into_view_if_needed(timeout=2000)
+            await buttons.first.click(timeout=2000)
+        except PlaywrightTimeoutError:
+            # Button is present but not interactable (e.g. a transient
+            # overlay) — stop rather than spin on the same one forever.
+            break
+        clicks += 1
+        try:
+            await page.wait_for_function(
+                "(n) => document.querySelectorAll('a[href^=\"/en/\"]').length > n",
+                arg=before,
+                timeout=5000,
+            )
+        except PlaywrightTimeoutError:
+            # The click didn't grow the link count in time — the section may
+            # have genuinely had no more items despite the button being
+            # present momentarily. Keep looping; the count-0 check above is
+            # what actually terminates.
+            pass
+    return clicks
+
+
 async def _fetch_hub_links(path: str) -> list[str]:
     """Navigate to a Versus.com category hub page and return every raw `/en/...` href on it.
 
@@ -258,6 +332,8 @@ async def _fetch_hub_links(path: str) -> list[str]:
                     page = await browser.new_page(user_agent=USER_AGENT)
                     await page.goto(url, timeout=NAV_TIMEOUT_MS, wait_until="domcontentloaded")
                     await page.wait_for_function(_HUB_SETTLED_JS, timeout=SPEC_TABLE_TIMEOUT_MS)
+                    clicks = await _expand_hub_page(page)
+                    logger.info("Expanded %s hub page: clicked 'Show more' %d time(s)", path, clicks)
                     return await page.eval_on_selector_all(
                         "a[href^='/en/']", "els => els.map(e => e.getAttribute('href'))"
                     )
@@ -277,11 +353,50 @@ def _is_product_slug(slug: str) -> bool:
     return any(slug == prefix or slug.startswith(f"{prefix}-") for prefix in KNOWN_BRAND_PREFIXES)
 
 
+def _brand_of(slug: str) -> str | None:
+    return next(
+        (prefix for prefix in KNOWN_BRAND_PREFIXES if slug == prefix or slug.startswith(f"{prefix}-")),
+        None,
+    )
+
+
+def _log_discovery_breakdown(kind: str, raw_hrefs: set[str], kept_slugs: list[str]) -> None:
+    """Log per-brand discovered (raw hrefs, pre-filter) vs kept (validated product slugs) counts.
+
+    "Discovered" is intentionally the noisier pre-filter number — it also
+    counts things `_is_product_slug` throws out for that brand (mainly "X
+    vs Y" comparison pages, since those share a real product's brand
+    prefix) — so the gap between the two columns shows how much filtering
+    actually removed, not just the final count.
+    """
+    raw_by_brand: dict[str, int] = {}
+    for href in raw_hrefs:
+        brand = _brand_of(href.removeprefix("/en/"))
+        if brand:
+            raw_by_brand[brand] = raw_by_brand.get(brand, 0) + 1
+    kept_by_brand: dict[str, int] = {}
+    for slug in kept_slugs:
+        brand = _brand_of(slug)
+        if brand:
+            kept_by_brand[brand] = kept_by_brand.get(brand, 0) + 1
+    for brand in sorted(set(raw_by_brand) | set(kept_by_brand)):
+        logger.info(
+            "%s discovery — %s: %d discovered, %d kept",
+            kind,
+            brand.capitalize(),
+            raw_by_brand.get(brand, 0),
+            kept_by_brand.get(brand, 0),
+        )
+
+
 async def discover_camera_slugs() -> list[str]:
     """Crawl versus.com/en/camera and return every real camera product slug found there."""
     hrefs = await _fetch_hub_links(_HUB_PATHS["camera"])
-    slugs = {href.removeprefix("/en/") for href in hrefs}
-    return sorted(slug for slug in slugs if _is_product_slug(slug))
+    raw_hrefs = set(hrefs)
+    slugs = {href.removeprefix("/en/") for href in raw_hrefs}
+    kept = sorted(slug for slug in slugs if _is_product_slug(slug))
+    _log_discovery_breakdown("Camera", raw_hrefs, kept)
+    return kept
 
 
 async def discover_lens_slugs() -> list[str]:
@@ -297,8 +412,11 @@ async def discover_lens_slugs() -> list[str]:
     curated by hand so far.
     """
     hrefs = await _fetch_hub_links(_HUB_PATHS["lens"])
-    slugs = {href.removeprefix("/en/") for href in hrefs}
-    return sorted(slug for slug in slugs if _is_product_slug(slug))
+    raw_hrefs = set(hrefs)
+    slugs = {href.removeprefix("/en/") for href in raw_hrefs}
+    kept = sorted(slug for slug in slugs if _is_product_slug(slug))
+    _log_discovery_breakdown("Lens", raw_hrefs, kept)
+    return kept
 
 
 async def discover_all_slugs() -> tuple[list[str], list[str]]:

@@ -6,7 +6,15 @@ from datetime import datetime, timezone
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator, model_validator
 
-from .parsers import normalize_mount, parse_float, parse_weight_grams, slugify
+from .parsers import (
+    normalize_brand,
+    normalize_lens_model_text,
+    normalize_mount,
+    parse_float,
+    parse_weight_grams,
+    slugify,
+    strip_redundant_brand_prefix,
+)
 
 
 class LensSpecs(BaseModel):
@@ -17,7 +25,10 @@ class LensSpecs(BaseModel):
     slug: str | None = None
     brand: str
     model: str
-    mount: str
+    # Optional for the same reason as CameraSpecs.mount (see models/camera.py)
+    # — some Versus lens pages omit the spec row even for a real
+    # interchangeable-lens product.
+    mount: str | None = None
     min_focal_length_mm: float = Field(gt=0)
     max_focal_length_mm: float = Field(gt=0)
     min_aperture: float = Field(gt=0)
@@ -30,9 +41,14 @@ class LensSpecs(BaseModel):
     source_url: HttpUrl | None = None
     scraped_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
+    @field_validator("brand", mode="before")
+    @classmethod
+    def _normalize_brand(cls, value: str) -> str:
+        return normalize_brand(value)
+
     @field_validator("mount", mode="before")
     @classmethod
-    def _normalize_mount(cls, value: str) -> str:
+    def _normalize_mount(cls, value: str | None) -> str | None:
         return normalize_mount(value)
 
     @field_validator(
@@ -50,8 +66,25 @@ class LensSpecs(BaseModel):
 
     @model_validator(mode="after")
     def _apply_defaults(self) -> "LensSpecs":
+        # See CameraSpecs._apply_defaults (models/camera.py) for why this is
+        # guarded on change rather than called unconditionally. Both cleanup
+        # steps are combined into one assignment so the guard only needs to
+        # compare once.
+        cleaned_model = normalize_lens_model_text(
+            strip_redundant_brand_prefix(self.brand, self.model)
+        )
+        if cleaned_model != self.model:
+            self.model = cleaned_model
         if not self.slug:
-            self.slug = slugify(f"{self.brand}-{self.model}")
+            # See CameraSpecs._apply_defaults (models/camera.py) for why
+            # mount has to be part of the slug: the same third-party lens is
+            # commonly sold under identical brand+model text across several
+            # mounts (e.g. a Sigma "85mm F1.4 DG HSM Art" in both Canon EF
+            # and Nikon F versions), which `merge_key` already treats as
+            # distinct products — the DB identity needs to agree, or two
+            # such records collide on `slug` and crash the upsert batch.
+            base = f"{self.brand}-{self.model}-{self.mount}" if self.mount else f"{self.brand}-{self.model}"
+            self.slug = slugify(base)
         if self.is_prime is None:
             self.is_prime = self.min_focal_length_mm == self.max_focal_length_mm
         if self.max_focal_length_mm < self.min_focal_length_mm:

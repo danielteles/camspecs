@@ -5,6 +5,7 @@ import { EquipmentCard } from "@/components/equipment-card";
 import { Link } from "@/i18n/navigation";
 import {
   formatAperture,
+  formatCameraCardMeta,
   formatFocalLengthRange,
   SENSOR_FORMAT_BADGE_VARIANT,
   SENSOR_FORMAT_KEYS,
@@ -88,7 +89,7 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
                 href={`/cameras/${camera.slug}`}
                 eyebrow={MOUNTS[camera.mount].name}
                 title={`${camera.brand} ${camera.model}`}
-                meta={`${camera.megapixels} MP · ${camera.releaseYear}`}
+                meta={formatCameraCardMeta(camera)}
                 badgeLabel={tGlobal(SENSOR_FORMAT_KEYS[camera.sensorFormat])}
                 badgeVariant={SENSOR_FORMAT_BADGE_VARIANT[camera.sensorFormat]}
                 cta={t("viewSpecsCta")}

@@ -1,11 +1,11 @@
-"""Curated static overrides for confirmed upstream Wikidata data gaps.
+"""Curated static overrides for confirmed upstream data gaps.
 
-Every entry here exists because the normal pipeline (Wikidata SPARQL crawl +
-cross-source merge, see `transformers/merger.py`) has been checked live and
-found structurally unable to resolve the field on its own — not because
-adding a static value is the default move. Design principle: prefer an
-explicit, sourced override over silently dropping valid physical gear (see
-`transformers/merger.py`'s `drop_unmergeable_wikidata_cameras`).
+Every entry here exists because the normal pipeline (source scrape/SPARQL
+crawl + cross-source merge, see `transformers/merger.py`) has been checked
+live and found structurally unable to resolve the field on its own — not
+because adding a static value is the default move. Design principle: prefer
+an explicit, sourced override over silently dropping valid physical gear
+(see `transformers/merger.py`'s `drop_unmergeable_wikidata_cameras`).
 """
 
 from __future__ import annotations
@@ -33,6 +33,38 @@ MOUNT_SENSOR_FORMATS: dict[str, SensorFormat] = {
     "micro-four-thirds": SensorFormat.MICRO_FOUR_THIRDS,
     "fujifilm-x": SensorFormat.APS_C,
     "fujifilm-g": SensorFormat.MEDIUM_FORMAT,
+}
+
+# Versus.com camera product slug -> its real interchangeable-lens mount,
+# for the confirmed case where Versus's own spec table omits the
+# `lens-mount` row despite the camera genuinely having one. Discovered by
+# probing every Versus page reachable from `extractors/versus.py`'s
+# discover_camera_slugs() and diffing which real interchangeable-lens
+# bodies came back with `mount: null` (see models/camera.py's `mount` field
+# for why that no longer crashes the pipeline outright). Deliberately does
+# NOT include fixed-lens cameras that also have no `lens-mount` row (e.g.
+# the Fujifilm X100 series, XQ2, XF1, X20, GFX100RF) — those genuinely have
+# no mount, and `main.py`'s `_drop_unsupported_mounts` correctly excludes
+# them from the mirrorless-interchangeable-lens catalog on that basis.
+#   - sony-alpha-nex-c3: Sony NEX-C3 (2011) — every NEX-series body is
+#     Sony E-mount by definition (E-mount was introduced with the NEX
+#     line); confirmed live the page's spec table has no lens-mount row at
+#     all despite every other NEX model's page (nex-3, nex-5, nex-5n, ...)
+#     having one, so this is a per-page scraping gap, not an ambiguous fact.
+VERSUS_SLUG_MOUNT_OVERRIDES: dict[str, str] = {
+    "sony-alpha-nex-c3": "sony-e",
+}
+
+# Versus.com camera product slug -> its real release year, for the confirmed
+# case where Versus's own spec table has no release-date row *and* the
+# camera's Wikidata item (checked live by QID, not just absence from the
+# general crawl's LIMIT window) has no P577/P6949 date statement either —
+# the same double-checked-gap standard LENS_KIT_RELEASE_YEARS below uses.
+#   - canon-eos-r1: Canon EOS R1 (Q105883423 on Wikidata, no date property
+#     at all) — announced 2024-07-17.
+#     https://www.dpreview.com/news/5361436240/canon-announces-eos-r1-flagship-sports-photojournalism-camera
+VERSUS_CAMERA_RELEASE_YEARS: dict[str, int] = {
+    "canon-eos-r1": 2024,
 }
 
 # Versus.com "camera + lens" kit slug (see `main.py`'s DEFAULT_VERSUS_LENS_

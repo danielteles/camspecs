@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import logging
+
 from sqlalchemy import Table, func
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.schema import CameraRecord, LensRecord
 from models import CameraSpecs, LensSpecs
+
+logger = logging.getLogger(__name__)
 
 # These describe *when/where the data came from*, not the specs themselves —
 # they're always refreshed to reflect the most recent pipeline run, even if
@@ -56,10 +60,43 @@ def _lens_to_row(lens: LensSpecs) -> dict:
     }
 
 
+def _dedupe_by_slug(table: Table, rows: list[dict]) -> list[dict]:
+    """Drop rows sharing a `slug` with an earlier row in the same batch.
+
+    Postgres rejects an `ON CONFLICT DO UPDATE` batch that touches the same
+    conflict-target row twice in one statement
+    (`asyncpg.exceptions.CardinalityViolationError`), which would otherwise
+    crash the whole upsert — losing every row in the batch, not just the
+    colliding ones. `models/camera.py` and `models/lens.py` already build
+    `slug` from brand+model+mount specifically to keep genuinely distinct
+    products (e.g. the same lens sold on two mounts) from colliding here;
+    this is the last-resort backstop for whatever that doesn't catch (a
+    slugify collision, a data-quality bug upstream, ...) so one bad pair of
+    records degrades to a dropped duplicate instead of dropping the batch.
+    """
+    seen: dict[str, dict] = {}
+    duplicates: list[str] = []
+    for row in rows:
+        slug = row["slug"]
+        if slug in seen:
+            duplicates.append(slug)
+            continue
+        seen[slug] = row
+    if duplicates:
+        logger.warning(
+            "Dropped %d duplicate-slug row(s) from %s upsert batch: %s",
+            len(duplicates),
+            table.name,
+            duplicates,
+        )
+    return list(seen.values())
+
+
 async def _upsert_rows(session: AsyncSession, table: Table, rows: list[dict]) -> int:
     if not rows:
         return 0
 
+    rows = _dedupe_by_slug(table, rows)
     stmt = pg_insert(table).values(rows)
     excluded = stmt.excluded
 

@@ -7,7 +7,15 @@ from datetime import datetime, timezone
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator, model_validator
 
 from .enums import SensorFormat, normalize_sensor_format
-from .parsers import normalize_mount, parse_crop_factor, parse_float, parse_weight_grams, slugify
+from .parsers import (
+    normalize_brand,
+    normalize_mount,
+    parse_crop_factor,
+    parse_float,
+    parse_weight_grams,
+    slugify,
+    strip_redundant_brand_prefix,
+)
 
 
 class SensorDimensions(BaseModel):
@@ -25,7 +33,15 @@ class CameraSpecs(BaseModel):
     slug: str | None = None
     brand: str
     model: str
-    mount: str
+    # Optional rather than required: a fixed-lens camera genuinely has none,
+    # and some Versus pages omit the spec row even for a real
+    # interchangeable-lens body (see `extractors/curated_fallbacks.py`'s
+    # VERSUS_SLUG_MOUNT_OVERRIDES). Either way a missing mount is real data,
+    # not a malformed record — `main.py`'s `_drop_unsupported_mounts` is what
+    # actually excludes a still-null mount from the final catalog, after
+    # `transformers/merger.py`'s `apply_curated_mount_overrides` and
+    # cross-source backfill both get a chance to resolve it.
+    mount: str | None = None
     sensor_format: SensorFormat
     sensor: SensorDimensions | None = None
     megapixels: float | None = Field(default=None, gt=0)
@@ -38,9 +54,14 @@ class CameraSpecs(BaseModel):
     source_url: HttpUrl | None = None
     scraped_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
+    @field_validator("brand", mode="before")
+    @classmethod
+    def _normalize_brand(cls, value: str) -> str:
+        return normalize_brand(value)
+
     @field_validator("mount", mode="before")
     @classmethod
-    def _normalize_mount(cls, value: str) -> str:
+    def _normalize_mount(cls, value: str | None) -> str | None:
         return normalize_mount(value)
 
     @field_validator("sensor_format", mode="before")
@@ -76,6 +97,26 @@ class CameraSpecs(BaseModel):
 
     @model_validator(mode="after")
     def _apply_defaults(self) -> "CameraSpecs":
+        # Guarded on change, not just called unconditionally: `validate_
+        # assignment=True` means `self.model = ...` re-invokes this whole
+        # validator, and pydantic doesn't skip that re-entry just because
+        # the new value equals the old one — an unconditional assignment
+        # here recurses forever instead of reaching a fixed point.
+        stripped_model = strip_redundant_brand_prefix(self.brand, self.model)
+        if stripped_model != self.model:
+            self.model = stripped_model
         if not self.slug:
-            self.slug = slugify(f"{self.brand}-{self.model}")
+            # Mount is part of the slug, not just brand+model: it's what
+            # `transformers/merger.py`'s `merge_key` already uses to decide
+            # two records are genuinely different items (a body sold under
+            # the same name on two mounts is two different products), so the
+            # DB identity has to agree — otherwise two distinct merged
+            # records collide on `slug`, the DB's primary key, and a single
+            # upsert batch touching both crashes outright (confirmed live:
+            # `asyncpg.exceptions.CardinalityViolationError` during a full
+            # discovery-scoped sync). Omitted when mount is unknown (a
+            # fixed-lens camera has none) rather than baking a literal
+            # "-none" into the slug.
+            base = f"{self.brand}-{self.model}-{self.mount}" if self.mount else f"{self.brand}-{self.model}"
+            self.slug = slugify(base)
         return self

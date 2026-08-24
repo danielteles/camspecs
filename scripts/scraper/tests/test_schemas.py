@@ -99,7 +99,9 @@ def main() -> None:
         pprint(camera.model_dump())
         print()
 
-    gfx100ii = next(c for c in map(CameraSpecs.model_validate, MOCK_CAMERAS) if c.slug == "fujifilm-gfx100-ii")
+    gfx100ii = next(
+        c for c in map(CameraSpecs.model_validate, MOCK_CAMERAS) if c.slug == "fujifilm-gfx100-ii-fujifilm-g"
+    )
     assert gfx100ii.weight_g == 1030, (
         "a comma thousands separator ('1,030 g') must parse to 1030g, not 1g"
     )

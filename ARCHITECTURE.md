@@ -433,55 +433,82 @@ spinner.
 `scripts/scraper/` holds a separate Python system. It fetches camera and
 lens data from external sources, merges and cleans the records, and
 writes them to the Postgres database the app reads from. See
-`scripts/scraper/README.md` for setup and usage.
+`scripts/scraper/README.md` for setup, usage, and full detail.
 
 The pipeline has five stages, in `main.py`: fetch, merge, validate,
-upsert, and revalidate. Three extractors run in the fetch stage today,
-each pulling from a different external source: a broad structured-data
-query, a scrape of a manufacturer's own product pages, and a scrape of a
+upsert, and revalidate. Three extractors run in the fetch stage, each
+from a different source. The sources are a structured public data
+source, a scrape of manufacturer product pages, and a scrape of a
 third-party specifications site. Each extractor is its own module in
 `extractors/`.
 
-`merger.py` combines records for the same item, from each source, into
-one record. `merge_key` groups records by mount plus a normalized
-brand-and-model string, so cosmetic differences between sources (for
-example, one source's "Z6III" against another source's "Z6 III") still
-match. Within a group, a fixed priority order decides each field: a
-manufacturer record (`source` prefixed `manufacturer:`) wins over the
-third-party site's record, which wins over the structured-data source's
-record. An empty field on the winning source fills in from the next
-source in that order.
+**Finding every product.** The specifications site hides most of its
+catalog behind a "Show more" button on each brand section.
+`extractors/versus.py`'s discovery functions click every button on both
+its camera page and its lens page, before they read the product list. A
+page load with no clicks shows about 130 products, out of more than
+1,800 that exist. Pass `--discover-versus-slugs` to `main.py` to run
+this step, and add its results to the fixed slug list already there.
 
-The merge stage runs four more steps after this three-way merge, each in
+**A gap before the merge.** `mount` on a raw fetched record can be
+empty. One example is a checked case where the specifications site's
+own page has no mount value for a real interchangeable-lens camera.
+Before the merge stage runs, `apply_curated_mount_overrides` fills in
+`mount` for each checked case. This step must run first, since the
+merge stage groups records by mount.
+
+**Merging records.** `merger.py` combines records for the same item,
+from each source, into one record. `merge_key` groups records by mount
+plus a normalized brand-and-model string. A cosmetic difference between
+sources, for example one source's "Z6III" against another's "Z6 III",
+still matches to one item. `normalize_brand` and
+`strip_redundant_brand_prefix` (`models/parsers.py`) clean the brand and
+model text first. This stops a legal company name, for example "Sony
+Group", from splitting one real item into two records. It also stops a
+repeated brand name, for example "Canon EOS R10", from doing the same.
+
+`normalize_lens_model_text` (`models/parsers.py`) fixes a matching gap
+for an aperture value inside a lens model, for example "F5.6" against
+"f/5.6" for the same lens. `merge_key` already treated both forms as
+one item, but each form produced a different slug. This let the same
+lens reach the database as two separate rows. This gap caused 66
+duplicate lens records and 1 duplicate camera record in one production
+catalog, confirmed live.
+
+Within a group, a priority order decides each field. A manufacturer
+record (`source` prefixed `manufacturer:`) wins over the specifications
+site's record. The specifications site's record wins over the
+structured source's record. An empty field on the winning record fills
+in from the next source in that order.
+
+The merge stage runs four more steps after this priority merge, each in
 `transformers/merger.py` or `transformers/sensor_fallback.py`:
 
-- One step fills in `sensor_format` for the three mounts where it is a
-  fixed physical fact (Micro Four Thirds, Fujifilm X, Fujifilm G), since
-  the structured-data source has no populated sensor-format property for
-  any camera and would otherwise leave these stuck at `"other"`.
-- Another step removes a merged camera record that is still `"other"`
-  and came only from that structured-data source. No later step or
-  frontend rule can resolve this record to a real sensor format, so
-  keeping it would only upsert a row nobody can ever see.
-- `backfill_sensor_dimensions` fills in `sensor` width and height, in
-  millimeters, from a fixed lookup table, for a record that resolved a
-  standard sensor format but got no exact dimensions from any source.
-  Canon's APS-C sensor gets its own entry in this table, since it is
-  physically smaller than every other manufacturer's APS-C sensor, by
-  close to 5%.
-- A final step fills in `release_year` for a small, named list of
-  lens-kit slugs, each checked against the structured-data source and
-  confirmed to carry no release-date property at all.
+- One step fills in `sensor_format` for three mounts where it is a fixed
+  physical fact (Micro Four Thirds, Fujifilm X, Fujifilm G). The
+  structured source has no populated sensor-format value for any camera.
+- One step removes a merged camera record that is still stuck at
+  `"other"` sensor format, and came only from the structured source. No
+  later step can resolve this record to a real sensor format. Keeping
+  this record only adds a row nobody can ever see.
+- `backfill_sensor_dimensions` fills in exact sensor width and height,
+  in millimeters, for a record with a known sensor format but no exact
+  measurement from any source. Canon's APS-C sensor gets its own entry
+  in this table, since it is smaller than every other maker's APS-C
+  sensor by close to 5%.
+- One step fills in a release year for a small, named list of lens kits
+  and one camera. Each entry is checked against the structured source,
+  with no release-date value at all.
 
-`extractors/curated_fallbacks.py` holds the two lookup tables these last
-two steps read from, each with a comment that names the reasoning and
-date behind every entry. This keeps a hand-written fact traceable,
-instead of mixing it silently into the scraped data.
+`extractors/curated_fallbacks.py` holds the lookup tables these steps
+read from. Each entry names its source in a comment. This keeps a
+hand-written fact traceable, instead of mixing it silently into the
+scraped data.
 
 The upsert stage writes each record to Postgres, through SQLAlchemy and
 asyncpg. A new item inserts as a new row. An existing item updates only
-its empty columns. A later scrape never overwrites a value that a
-person, or an earlier scrape, already validated.
+its empty columns. A later scrape never replaces a value that a person,
+or an earlier scrape, already checked.
 
 The final stage calls a new API route, `POST /api/revalidate`
 (`app/api/revalidate/route.ts`). This route checks a shared secret, then
@@ -490,8 +517,19 @@ Without this call, a change waits for the existing 1-hour `revalidate`
 window to expire on its own. A failed revalidation call does not fail
 the pipeline, since Postgres already holds the data by this stage.
 
-`.github/workflows/scraper.yml` runs the pipeline on a schedule, and on a
-manual trigger with a dry-run option.
+On the read side, `lib/services/equipment.ts` shows a camera or lens
+when one display fact is missing, for example its release year or its
+megapixel count. It still drops a record with an unsupported mount. It
+also drops a camera with no sensor size, since the equivalence
+calculator needs a real sensor size to run.
+
+`.github/workflows/scraper.yml` runs the pipeline on a schedule, and on
+a manual trigger with a dry-run option.
+
+`scripts/scraper/tests/test_versus_discovery_integration.py` runs
+against the live specifications site, and checks that each major brand
+still returns at least a fixed minimum count of products. This test
+catches a future regression in the discovery step.
 
 ## Math engine
 

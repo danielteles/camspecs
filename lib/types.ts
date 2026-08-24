@@ -33,8 +33,10 @@ export interface Camera {
   mount: MountId;
   sensorFormat: SensorFormat;
   sensor: SensorDimensions;
-  megapixels: number;
-  releaseYear: number;
+  /** Not scraped for every model; the resolution filter treats null as "unknown, never matches". */
+  megapixels: number | null;
+  /** Not scraped for every model — Versus/Wikidata coverage of release dates is incomplete. */
+  releaseYear: number | null;
   /** Not scraped for every model; the weight filter treats null as "unknown, never matches". */
   weightG: number | null;
   /** When the ETL scraper pipeline last synced this record's specs. */
@@ -53,7 +55,8 @@ export interface Lens {
   /** Not scraped for every model; the weight filter treats null as "unknown, never matches". */
   weightG: number | null;
   isPrime: boolean;
-  releaseYear: number;
+  /** Not scraped for every model — Versus/Wikidata coverage of release dates is incomplete. */
+  releaseYear: number | null;
   /** When the ETL scraper pipeline last synced this record's specs. */
   updatedAt: Date;
 }

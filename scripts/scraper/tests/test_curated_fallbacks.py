@@ -129,19 +129,19 @@ def main() -> None:
         print()
 
     by_slug = {camera.slug: camera for camera in cameras}
-    assert by_slug["om-system-om-5"].sensor_format == "micro-four-thirds", (
+    assert by_slug["om-system-om-5-micro-four-thirds"].sensor_format == "micro-four-thirds", (
         "MFT mount must resolve to micro-four-thirds"
     )
-    assert by_slug["fujifilm-gfx100s"].sensor_format == "medium-format", (
+    assert by_slug["fujifilm-gfx100s-fujifilm-g"].sensor_format == "medium-format", (
         "Fujifilm G-mount must resolve to medium-format"
     )
-    assert by_slug["fujifilm-x-t30-ii"].sensor_format == "aps-c", (
+    assert by_slug["fujifilm-x-t30-ii-fujifilm-x"].sensor_format == "aps-c", (
         "Fujifilm X-mount must resolve to aps-c"
     )
-    assert by_slug["sony-alpha-7c-ii"].sensor_format == "other", (
+    assert by_slug["sony-alpha-7c-ii-sony-e"].sensor_format == "other", (
         "mixed-format mount (Sony E) must NOT be guessed at"
     )
-    assert by_slug["panasonic-lumix-g9-ii"].sensor_format == "micro-four-thirds", (
+    assert by_slug["panasonic-lumix-g9-ii-micro-four-thirds"].sensor_format == "micro-four-thirds", (
         "a real, already-resolved sensor_format must be left untouched"
     )
     print("OK  sensor_format override assertions passed\n")
@@ -149,10 +149,12 @@ def main() -> None:
     print("=== Overrides must save real gear from the Wikidata-only drop filter ===")
     filtered = drop_unmergeable_wikidata_cameras(cameras)
     filtered_slugs = {camera.slug for camera in filtered}
-    assert {"om-system-om-5", "fujifilm-gfx100s", "fujifilm-x-t30-ii"} <= filtered_slugs, (
-        "the three curated-mount cameras must survive the drop filter"
-    )
-    assert "sony-alpha-7c-ii" not in filtered_slugs, (
+    assert {
+        "om-system-om-5-micro-four-thirds",
+        "fujifilm-gfx100s-fujifilm-g",
+        "fujifilm-x-t30-ii-fujifilm-x",
+    } <= filtered_slugs, "the three curated-mount cameras must survive the drop filter"
+    assert "sony-alpha-7c-ii-sony-e" not in filtered_slugs, (
         "the mixed-mount camera must still be dropped — its gap is real"
     )
     print("OK  drop-filter interaction assertions passed\n")
@@ -169,13 +171,13 @@ def main() -> None:
         print()
 
     lens_by_slug = {lens.slug: lens for lens in lenses}
-    assert lens_by_slug["nikon-nikkor-z-40mm-f-2-se"].release_year == 2022, (
+    assert lens_by_slug["nikon-nikkor-z-40mm-f-2-se-nikon-z"].release_year == 2022, (
         "a curated lens-kit slug must backfill its verified release_year"
     )
-    assert lens_by_slug["sony-fe-24-70mm-f2-8-gm-ii"].release_year is None, (
+    assert lens_by_slug["sony-fe-24-70mm-f-2-8-gm-ii-sony-e"].release_year is None, (
         "a slug outside the curated dictionary must be left null, not guessed at"
     )
-    assert lens_by_slug["canon-rf-24-105mm-f4l-is-usm"].release_year == 2018, (
+    assert lens_by_slug["canon-rf-24-105mm-f-4l-is-usm-canon-rf"].release_year == 2018, (
         "an already-populated release_year must not be overwritten"
     )
     print("OK  lens release_year override assertions passed")

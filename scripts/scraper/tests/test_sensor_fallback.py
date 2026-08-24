@@ -82,37 +82,37 @@ def main() -> None:
 
     by_slug = {camera.slug: camera for camera in result}
 
-    full_frame = by_slug["panasonic-lumix-s5-ii"]
+    full_frame = by_slug["panasonic-lumix-s5-ii-l-mount"]
     assert full_frame.sensor is not None
     assert (full_frame.sensor.width_mm, full_frame.sensor.height_mm) == (36.0, 24.0), (
         "full-frame must backfill to the standard 36x24mm"
     )
 
-    sony_aps_c = by_slug["sony-alpha-6700"]
+    sony_aps_c = by_slug["sony-alpha-6700-sony-e"]
     assert sony_aps_c.sensor is not None
     assert (sony_aps_c.sensor.width_mm, sony_aps_c.sensor.height_mm) == (23.5, 15.6), (
         "non-Canon APS-C must backfill to 23.5x15.6mm"
     )
 
-    canon_aps_c = by_slug["canon-eos-r50"]
+    canon_aps_c = by_slug["canon-eos-r50-canon-rf"]
     assert canon_aps_c.sensor is not None
     assert (canon_aps_c.sensor.width_mm, canon_aps_c.sensor.height_mm) == (22.3, 14.9), (
         "Canon APS-C must backfill to its smaller 22.3x14.9mm size, not the generic APS-C size"
     )
 
-    mft = by_slug["om-system-om-1-mark-ii"]
+    mft = by_slug["om-system-om-1-mark-ii-micro-four-thirds"]
     assert mft.sensor is not None
     assert (mft.sensor.width_mm, mft.sensor.height_mm) == (17.3, 13.0), (
         "micro-four-thirds must backfill to the standard 17.3x13mm"
     )
 
-    z6iii = by_slug["nikon-z6iii"]
+    z6iii = by_slug["nikon-z6iii-nikon-z"]
     assert z6iii.sensor is not None
     assert (z6iii.sensor.width_mm, z6iii.sensor.height_mm) == (35.9, 23.9), (
         "a record with exact dimensions from a source must not be overwritten by the fallback"
     )
 
-    rx100 = by_slug["sony-rx100-vii"]
+    rx100 = by_slug["sony-rx100-vii-sony-e"]
     assert rx100.sensor is None, (
         "unstandardized formats (other/1-inch) must be left null, not guessed at"
     )
