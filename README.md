@@ -58,6 +58,48 @@ The home page is `app/[locale]/page.tsx`. Every route lives under the
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Catalog filtering
+
+`/cameras` and `/lenses` support faceted filtering. Every filter is a URL
+query parameter. A filtered view is a plain link — copy it, send it, or
+bookmark it, and it opens to the same results. For example:
+
+```
+/en/cameras?sensor=full-frame&brand=Sony&min_megapixels=24
+```
+
+The server reads filters and applies them as a real SQL `WHERE` clause
+(`lib/services/equipment.ts`). The browser does not filter results after
+the fact. The app computes facet option counts (for example "Sony (3)")
+against the full catalog, so a category never shows the wrong number,
+even before you touch a checkbox.
+
+**`/cameras` parameters:**
+
+| Parameter        | Format                         | Example                   |
+| ---------------- | ------------------------------ | ------------------------- |
+| `brand`          | comma-separated list           | `brand=Sony,Fujifilm`     |
+| `sensor`         | comma-separated `SensorFormat` | `sensor=full-frame,aps-c` |
+| `mount`          | comma-separated `MountId`      | `mount=sony-e`            |
+| `min_megapixels` | number                         | `min_megapixels=24`       |
+| `max_weight`     | number, grams                  | `max_weight=700`          |
+
+**`/lenses` parameters:**
+
+| Parameter                 | Format                                                       | Example                     |
+| ------------------------- | ------------------------------------------------------------ | --------------------------- |
+| `brand`                   | comma-separated list                                         | `brand=Sony`                |
+| `mount`                   | comma-separated `MountId`                                    | `mount=sony-e`              |
+| `focal_type`              | `prime` or `zoom`                                            | `focal_type=prime`          |
+| `min_focal` / `max_focal` | number, mm (matches a lens whose range overlaps this window) | `min_focal=24&max_focal=70` |
+| `max_aperture`            | number (f-number, lower = faster)                            | `max_aperture=2.8`          |
+
+You can omit any parameter, or combine several freely. The app treats
+an unset or invalid value as "no filter," not as an error. See
+`lib/catalog-params.ts` for the parsing and serialization rules. See
+`ARCHITECTURE.md`'s "Catalog browse pages" section for how filter state
+flows from the URL to the SQL query.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

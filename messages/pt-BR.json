@@ -45,17 +45,43 @@
       "description": "Explore o catálogo completo de câmeras.",
       "searchPlaceholder": "Buscar por marca ou modelo…",
       "searchLabel": "Buscar câmeras",
+      "brandFilterLabel": "Marca",
       "sensorFormatFilterLabel": "Formato do sensor",
-      "noResults": "Nenhuma câmera corresponde à sua busca."
+      "mountFilterLabel": "Encaixe",
+      "minResolutionFilterLabel": "Resolução mínima",
+      "maxWeightFilterLabel": "Peso máximo",
+      "minResolutionChip": "{value} MP ou mais",
+      "maxWeightChip": "{value} g ou menos",
+      "noResults": "Nenhuma câmera corresponde aos critérios selecionados."
     },
     "lenses": {
       "title": "Lentes",
       "description": "Explore o catálogo completo de lentes.",
       "searchPlaceholder": "Buscar por marca ou modelo…",
       "searchLabel": "Buscar lentes",
+      "brandFilterLabel": "Marca",
       "mountFilterLabel": "Encaixe",
-      "noResults": "Nenhuma lente corresponde à sua busca."
+      "focalTypeFilterLabel": "Tipo de lente",
+      "primeLabel": "Fixa",
+      "zoomLabel": "Zoom",
+      "focalLengthFilterLabel": "Distância focal",
+      "minFocalLengthThumbLabel": "Distância focal mínima",
+      "maxFocalLengthThumbLabel": "Distância focal máxima",
+      "maxApertureFilterLabel": "Abertura máxima",
+      "focalLengthChip": "{min}–{max}mm",
+      "maxApertureChip": "ƒ/{value} ou mais rápida",
+      "noResults": "Nenhuma lente corresponde aos critérios selecionados."
     }
+  },
+  "Filters": {
+    "title": "Filtros",
+    "openLabel": "Filtros",
+    "closeLabel": "Fechar",
+    "clearAll": "Limpar tudo",
+    "resetCta": "Redefinir filtros",
+    "removeFilter": "Remover filtro {label}",
+    "activeFiltersLabel": "Filtros ativos",
+    "applyLabel": "Mostrar {count} resultados"
   },
   "CompareSelector": {
     "triggerLabel": "Adicionar uma câmera ou lente…",

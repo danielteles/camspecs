@@ -1,7 +1,7 @@
-import type { Selectable } from "kysely";
+import type { Kysely, Selectable } from "kysely";
 
 import { getDb } from "@/lib/db/client";
-import type { CamerasTable, LensesTable } from "@/lib/db/schema";
+import type { CamerasTable, Database, LensesTable } from "@/lib/db/schema";
 import type { Camera, Lens, MountId, SensorFormat } from "@/lib/types";
 
 // Re-derived from MountId rather than trusted from the DB column, which is
@@ -79,6 +79,7 @@ function toCamera(row: Selectable<CamerasTable>): Camera | null {
     sensor: { widthMm: row.sensor_width_mm, heightMm: row.sensor_height_mm },
     megapixels: row.megapixels,
     releaseYear: row.release_year,
+    weightG: row.weight_g,
     updatedAt: row.updated_at,
   };
 }
@@ -106,31 +107,178 @@ function toLens(row: Selectable<LensesTable>): Lens | null {
     maxFocalLengthMm: row.max_focal_length_mm,
     maxAperture: row.max_aperture,
     minAperture: row.min_aperture,
+    weightG: row.weight_g,
+    isPrime: row.is_prime,
     releaseYear: row.release_year,
     updatedAt: row.updated_at,
   };
 }
 
-export async function getAllCameras(): Promise<Camera[]> {
-  const rows = await getDb()
-    .selectFrom("cameras")
-    .selectAll()
-    .orderBy("brand")
-    .orderBy("model")
-    .execute();
+export interface CameraFilters {
+  brands?: string[];
+  sensorFormats?: SensorFormat[];
+  mounts?: MountId[];
+  /** Inclusive lower bound. */
+  minResolutionMp?: number;
+  /** Inclusive upper bound. Rows with a null weight_g never match. */
+  maxWeightG?: number;
+}
+
+export type CameraSortKey = "brand" | "resolution" | "weight" | "release_date";
+
+export interface EquipmentSort<K extends string> {
+  key: K;
+  direction?: "asc" | "desc";
+}
+
+export type CameraSort = EquipmentSort<CameraSortKey>;
+
+// Maps sort keys to real columns through a fixed table rather than accepting
+// a column name directly, so a sort key can never be used to inject
+// arbitrary SQL into ORDER BY.
+const CAMERA_SORT_COLUMNS: Record<CameraSortKey, keyof CamerasTable> = {
+  brand: "brand",
+  resolution: "megapixels",
+  weight: "weight_g",
+  release_date: "release_year",
+};
+
+/**
+ * Builds the `cameras` SELECT with optional filters and sort applied, but
+ * does not execute it — kept separate from getFilteredCameras so tests can
+ * assert on the compiled SQL without a live database connection.
+ */
+export function buildCamerasQuery(
+  db: Kysely<Database>,
+  filters: CameraFilters = {},
+  sort?: CameraSort,
+) {
+  let query = db.selectFrom("cameras").selectAll();
+
+  // An empty array means "nothing selected", i.e. no filter — `where(col,
+  // "in", [])` would instead compile to an always-false clause and hide
+  // every row.
+  if (filters.brands && filters.brands.length > 0) {
+    query = query.where("brand", "in", filters.brands);
+  }
+  if (filters.sensorFormats && filters.sensorFormats.length > 0) {
+    query = query.where("sensor_format", "in", filters.sensorFormats);
+  }
+  if (filters.mounts && filters.mounts.length > 0) {
+    query = query.where("mount", "in", filters.mounts);
+  }
+  if (filters.minResolutionMp != null) {
+    query = query.where("megapixels", ">=", filters.minResolutionMp);
+  }
+  if (filters.maxWeightG != null) {
+    query = query.where("weight_g", "<=", filters.maxWeightG);
+  }
+
+  const sortColumn = CAMERA_SORT_COLUMNS[sort?.key ?? "brand"];
+  const direction = sort?.direction ?? "asc";
+  query = query.orderBy(sortColumn, direction);
+  // brand/model as a stable tie-breaker under any primary sort, matching
+  // the fixed ordering getAllCameras used before sorting was configurable.
+  if (sortColumn !== "brand") {
+    query = query.orderBy("brand", "asc");
+  }
+  query = query.orderBy("model", "asc");
+
+  return query;
+}
+
+export async function getFilteredCameras(
+  filters: CameraFilters = {},
+  sort?: CameraSort,
+): Promise<Camera[]> {
+  const rows = await buildCamerasQuery(getDb(), filters, sort).execute();
   return rows
     .map(toCamera)
     .filter((camera): camera is Camera => camera !== null);
 }
 
-export async function getAllLenses(): Promise<Lens[]> {
-  const rows = await getDb()
-    .selectFrom("lenses")
-    .selectAll()
-    .orderBy("brand")
-    .orderBy("model")
-    .execute();
+export async function getAllCameras(): Promise<Camera[]> {
+  return getFilteredCameras();
+}
+
+export interface LensFilters {
+  brands?: string[];
+  mounts?: MountId[];
+  focalType?: "prime" | "zoom";
+  /** Matches lenses whose focal range reaches at least this length. */
+  minFocalLength?: number;
+  /** Matches lenses whose focal range starts at or below this length. */
+  maxFocalLength?: number;
+  /** Inclusive upper bound on the f-number, e.g. 2.8 matches f/2.8 and faster. */
+  maxAperture?: number;
+}
+
+export type LensSortKey =
+  "brand" | "focal_length" | "aperture" | "release_date";
+export type LensSort = EquipmentSort<LensSortKey>;
+
+const LENS_SORT_COLUMNS: Record<LensSortKey, keyof LensesTable> = {
+  brand: "brand",
+  focal_length: "min_focal_length_mm",
+  aperture: "max_aperture",
+  release_date: "release_year",
+};
+
+/**
+ * Builds the `lenses` SELECT with optional filters and sort applied, but
+ * does not execute it — kept separate from getFilteredLenses so tests can
+ * assert on the compiled SQL without a live database connection.
+ */
+export function buildLensesQuery(
+  db: Kysely<Database>,
+  filters: LensFilters = {},
+  sort?: LensSort,
+) {
+  let query = db.selectFrom("lenses").selectAll();
+
+  if (filters.brands && filters.brands.length > 0) {
+    query = query.where("brand", "in", filters.brands);
+  }
+  if (filters.mounts && filters.mounts.length > 0) {
+    query = query.where("mount", "in", filters.mounts);
+  }
+  if (filters.focalType) {
+    query = query.where("is_prime", "=", filters.focalType === "prime");
+  }
+  // Focal length is stored as a [min, max] range per lens (a prime has
+  // min === max); a requested [minFocalLength, maxFocalLength] range
+  // matches any lens whose range overlaps it, not just an exact fit.
+  if (filters.minFocalLength != null) {
+    query = query.where("max_focal_length_mm", ">=", filters.minFocalLength);
+  }
+  if (filters.maxFocalLength != null) {
+    query = query.where("min_focal_length_mm", "<=", filters.maxFocalLength);
+  }
+  if (filters.maxAperture != null) {
+    query = query.where("max_aperture", "<=", filters.maxAperture);
+  }
+
+  const sortColumn = LENS_SORT_COLUMNS[sort?.key ?? "brand"];
+  const direction = sort?.direction ?? "asc";
+  query = query.orderBy(sortColumn, direction);
+  if (sortColumn !== "brand") {
+    query = query.orderBy("brand", "asc");
+  }
+  query = query.orderBy("model", "asc");
+
+  return query;
+}
+
+export async function getFilteredLenses(
+  filters: LensFilters = {},
+  sort?: LensSort,
+): Promise<Lens[]> {
+  const rows = await buildLensesQuery(getDb(), filters, sort).execute();
   return rows.map(toLens).filter((lens): lens is Lens => lens !== null);
+}
+
+export async function getAllLenses(): Promise<Lens[]> {
+  return getFilteredLenses();
 }
 
 export async function getCameraBySlug(slug: string): Promise<Camera | null> {

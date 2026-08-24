@@ -45,17 +45,43 @@
       "description": "Browse the full camera catalog.",
       "searchPlaceholder": "Search by brand or model…",
       "searchLabel": "Search cameras",
+      "brandFilterLabel": "Brand",
       "sensorFormatFilterLabel": "Sensor format",
-      "noResults": "No cameras match your search."
+      "mountFilterLabel": "Mount",
+      "minResolutionFilterLabel": "Minimum resolution",
+      "maxWeightFilterLabel": "Maximum weight",
+      "minResolutionChip": "{value} MP or more",
+      "maxWeightChip": "{value} g or less",
+      "noResults": "No cameras match your selected criteria."
     },
     "lenses": {
       "title": "Lenses",
       "description": "Browse the full lens catalog.",
       "searchPlaceholder": "Search by brand or model…",
       "searchLabel": "Search lenses",
+      "brandFilterLabel": "Brand",
       "mountFilterLabel": "Mount",
-      "noResults": "No lenses match your search."
+      "focalTypeFilterLabel": "Lens type",
+      "primeLabel": "Prime",
+      "zoomLabel": "Zoom",
+      "focalLengthFilterLabel": "Focal length",
+      "minFocalLengthThumbLabel": "Minimum focal length",
+      "maxFocalLengthThumbLabel": "Maximum focal length",
+      "maxApertureFilterLabel": "Maximum aperture",
+      "focalLengthChip": "{min}–{max}mm",
+      "maxApertureChip": "ƒ/{value} or faster",
+      "noResults": "No lenses match your selected criteria."
     }
+  },
+  "Filters": {
+    "title": "Filters",
+    "openLabel": "Filters",
+    "closeLabel": "Close",
+    "clearAll": "Clear all",
+    "resetCta": "Reset filters",
+    "removeFilter": "Remove {label} filter",
+    "activeFiltersLabel": "Active filters",
+    "applyLabel": "Show {count} results"
   },
   "CompareSelector": {
     "triggerLabel": "Add a camera or lens…",
