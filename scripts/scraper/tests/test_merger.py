@@ -166,13 +166,13 @@ def main() -> None:
         pprint(camera.model_dump())
         print()
 
-    z6iii = next(c for c in merged_cameras if c.slug == "nikon-z6iii")
+    z6iii = next(c for c in merged_cameras if c.slug == "nikon-z6iii-nikon-z")
     assert len(merged_cameras) == 2, "expected the two Z6III records to merge into one"
     assert z6iii.weight_g == 670, "manufacturer weight must win over Wikidata's conflicting value"
     assert z6iii.release_year == 2024, "release_year must be backfilled from Wikidata"
     assert z6iii.sensor_format == "full-frame", "manufacturer sensor_format must win"
     assert z6iii.source == "manufacturer:nikon+wikidata", "merged source must list both contributors"
-    r50 = next(c for c in merged_cameras if c.slug == "canon-eos-r50")
+    r50 = next(c for c in merged_cameras if c.slug == "canon-eos-r50-canon-rf")
     assert r50.source == "wikidata", "unrelated single-source camera must pass through unchanged"
     print("OK  camera merge assertions passed\n")
 
@@ -228,7 +228,7 @@ def main() -> None:
 
     filtered = drop_unmergeable_wikidata_cameras(merged_drop_test)
     assert len(filtered) == 1, "only the Wikidata-only 'other'-format camera must be dropped"
-    assert filtered[0].slug == "sigma-fp", (
+    assert filtered[0].slug == "sigma-fp-l-mount", (
         "the manufacturer-sourced 'other'-format camera must survive — its gap is real "
         "and separately diagnosable, not this filter's concern"
     )

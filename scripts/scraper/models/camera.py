@@ -85,5 +85,17 @@ class CameraSpecs(BaseModel):
     @model_validator(mode="after")
     def _apply_defaults(self) -> "CameraSpecs":
         if not self.slug:
-            self.slug = slugify(f"{self.brand}-{self.model}")
+            # Mount is part of the slug, not just brand+model: it's what
+            # `transformers/merger.py`'s `merge_key` already uses to decide
+            # two records are genuinely different items (a body sold under
+            # the same name on two mounts is two different products), so the
+            # DB identity has to agree — otherwise two distinct merged
+            # records collide on `slug`, the DB's primary key, and a single
+            # upsert batch touching both crashes outright (confirmed live:
+            # `asyncpg.exceptions.CardinalityViolationError` during a full
+            # discovery-scoped sync). Omitted when mount is unknown (a
+            # fixed-lens camera has none) rather than baking a literal
+            # "-none" into the slug.
+            base = f"{self.brand}-{self.model}-{self.mount}" if self.mount else f"{self.brand}-{self.model}"
+            self.slug = slugify(base)
         return self

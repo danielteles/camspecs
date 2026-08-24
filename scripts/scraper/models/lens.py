@@ -54,7 +54,15 @@ class LensSpecs(BaseModel):
     @model_validator(mode="after")
     def _apply_defaults(self) -> "LensSpecs":
         if not self.slug:
-            self.slug = slugify(f"{self.brand}-{self.model}")
+            # See CameraSpecs._apply_defaults (models/camera.py) for why
+            # mount has to be part of the slug: the same third-party lens is
+            # commonly sold under identical brand+model text across several
+            # mounts (e.g. a Sigma "85mm F1.4 DG HSM Art" in both Canon EF
+            # and Nikon F versions), which `merge_key` already treats as
+            # distinct products — the DB identity needs to agree, or two
+            # such records collide on `slug` and crash the upsert batch.
+            base = f"{self.brand}-{self.model}-{self.mount}" if self.mount else f"{self.brand}-{self.model}"
+            self.slug = slugify(base)
         if self.is_prime is None:
             self.is_prime = self.min_focal_length_mm == self.max_focal_length_mm
         if self.max_focal_length_mm < self.min_focal_length_mm:
