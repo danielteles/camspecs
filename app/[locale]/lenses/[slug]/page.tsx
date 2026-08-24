@@ -70,7 +70,11 @@ export async function generateMetadata({
     description,
     alternates: {
       canonical: `/${locale}/lenses/${slug}`,
-      languages: { en: `/en/lenses/${slug}`, "pt-BR": `/pt-BR/lenses/${slug}` },
+      languages: {
+        en: `/en/lenses/${slug}`,
+        "pt-BR": `/pt-BR/lenses/${slug}`,
+        es: `/es/lenses/${slug}`,
+      },
     },
     openGraph: { title, description },
   };

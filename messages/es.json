@@ -1,0 +1,167 @@
+{
+  "Layout": {
+    "skipToContent": "Saltar al contenido principal"
+  },
+  "LanguageSwitcher": {
+    "label": "Idioma"
+  },
+  "Metadata": {
+    "title": "CamSpecs — Calculadora de Equivalencia de Cámaras y Lentes",
+    "description": "Compara cámaras y lentes entre formatos de sensor con una calculadora de equivalencia dinámica."
+  },
+  "NotFound": {
+    "eyebrow": "404",
+    "title": "Página no encontrada",
+    "description": "La página que buscas no existe o pudo haber sido movida.",
+    "backHome": "Volver al inicio"
+  },
+  "Common": {
+    "siteName": "CamSpecs",
+    "primaryNavLabel": "Principal",
+    "homeLink": "Inicio",
+    "compareLink": "Comparar",
+    "camerasLink": "Cámaras",
+    "lensesLink": "Lentes",
+    "openMenu": "Abrir menú",
+    "closeMenu": "Cerrar menú",
+    "breadcrumbLabel": "Ruta de navegación"
+  },
+  "Footer": {
+    "catalogsHeading": "Catálogos",
+    "popularComparisonsHeading": "Comparaciones populares",
+    "moreHeading": "Más",
+    "githubLink": "Repositorio en GitHub"
+  },
+  "LastUpdated": {
+    "label": "Última actualización: {date}",
+    "aggregateLabel": "Especificaciones sincronizadas el: {date}"
+  },
+  "Catalog": {
+    "allFilter": "Todos",
+    "viewSpecsCta": "Ver especificaciones",
+    "addToCompareCta": "Añadir a la comparación",
+    "cameras": {
+      "title": "Cámaras",
+      "description": "Explora el catálogo completo de cámaras.",
+      "searchPlaceholder": "Buscar por marca o modelo…",
+      "searchLabel": "Buscar cámaras",
+      "sensorFormatFilterLabel": "Formato del sensor",
+      "noResults": "Ninguna cámara coincide con tu búsqueda."
+    },
+    "lenses": {
+      "title": "Lentes",
+      "description": "Explora el catálogo completo de lentes.",
+      "searchPlaceholder": "Buscar por marca o modelo…",
+      "searchLabel": "Buscar lentes",
+      "mountFilterLabel": "Montura",
+      "noResults": "Ningún lente coincide con tu búsqueda."
+    }
+  },
+  "CompareSelector": {
+    "triggerLabel": "Añadir una cámara o lente…",
+    "ariaLabel": "Buscar cámaras y lentes",
+    "placeholder": "Buscar por marca o modelo…",
+    "empty": "No se encontraron resultados.",
+    "searching": "Buscando…",
+    "maxReached": "Puedes comparar hasta {max} elementos. Elimina uno para añadir otro.",
+    "selectedLabel": "Elementos para comparar",
+    "removeItem": "Quitar {item} de la comparación",
+    "typeCamera": "Cámara",
+    "typeLens": "Lente"
+  },
+  "ComparePage": {
+    "title": "Comparar",
+    "description": "Busca hasta 4 cámaras o lentes para comparar sus especificaciones y equivalencias.",
+    "emptyState": "Busca cámaras o lentes arriba para empezar a comparar.",
+    "addAnotherState": "Añade otro elemento arriba para ver una comparación.",
+    "diffToggleLabel": "Ocultar especificaciones idénticas",
+    "swapItemsCta": "Intercambiar elementos",
+    "copyLinkCta": "Copiar enlace",
+    "copiedLabel": "¡Copiado!",
+    "notApplicable": "—",
+    "sensorFormatFullFrame": "Formato completo",
+    "sensorFormatApsC": "APS-C",
+    "sensorFormatMicroFourThirds": "Micro Cuatro Tercios",
+    "sensorFormatMediumFormat": "Formato medio",
+    "rows": {
+      "type": "Tipo",
+      "brand": "Marca",
+      "model": "Modelo",
+      "mount": "Montura",
+      "releaseYear": "Año de lanzamiento",
+      "sensorFormat": "Formato del sensor",
+      "sensorSize": "Tamaño del sensor",
+      "cropFactor": "Factor de recorte (equiv. 35mm)",
+      "megapixels": "Megapíxeles",
+      "focalLength": "Distancia focal",
+      "maxAperture": "Apertura máxima",
+      "equivalentFocalLength": "Distancia focal equivalente (35mm)",
+      "equivalentAperture": "Apertura equivalente (35mm, PdC)",
+      "diagonalFieldOfView": "Campo de visión diagonal"
+    }
+  },
+  "ProductPage": {
+    "specsHeading": "Especificaciones",
+    "compareCta": "Añadir a la comparación",
+    "compatibleLensesHeading": "Lentes compatibles",
+    "compatibleCamerasHeading": "Cámaras compatibles",
+    "noCompatibleLenses": "Aún no hay lentes compatibles en el catálogo.",
+    "noCompatibleCameras": "Aún no hay cámaras compatibles en el catálogo.",
+    "cameraMetaDescription": "Especificaciones, factor de recorte y megapíxeles de {brand} {model} en CamSpecs.",
+    "lensMetaDescription": "Especificaciones, distancia focal y apertura equivalentes (35mm) de {brand} {model} en CamSpecs.",
+    "fovHeading": "Simulador de campo de visión",
+    "horizontalFovLabel": "Campo de visión horizontal",
+    "focalLengthSliderLabel": "Distancia focal: {value}mm"
+  },
+  "HomePage": {
+    "title": "CamSpecs",
+    "tagline": "Compara cámaras y lentes entre formatos de sensor.",
+    "description": "Una plataforma técnica de comparación con una calculadora dinámica de equivalencia de distancia focal, apertura y campo de visión.",
+    "startComparingCta": "Empezar a comparar",
+    "browseCamerasCta": "Ver cámaras",
+    "browseLensesCta": "Ver lentes",
+    "featuredHeading": "Equipo destacado",
+    "featuredDescription": "Una muestra de lo que hay en el catálogo — ve directo a las especificaciones completas.",
+    "featuredCamerasHeading": "Cámaras",
+    "featuredLensesHeading": "Lentes",
+    "viewSpecsCta": "Ver especificaciones"
+  },
+  "Showcase": {
+    "title": "Vitrina de Componentes",
+    "description": "Una referencia de los componentes base del sistema de diseño usados en CamSpecs.",
+    "buttons": {
+      "heading": "Botones",
+      "default": "Predeterminado",
+      "outline": "Contorno",
+      "secondary": "Secundario",
+      "ghost": "Fantasma",
+      "destructive": "Destructivo",
+      "link": "Enlace",
+      "disabled": "Deshabilitado"
+    },
+    "inputs": {
+      "heading": "Campos de texto",
+      "emailLabel": "Correo electrónico",
+      "emailPlaceholder": "tu@ejemplo.com",
+      "disabledLabel": "Campo deshabilitado",
+      "invalidLabel": "Slug de la cámara",
+      "invalidError": "Este slug no corresponde a ninguna cámara del catálogo."
+    },
+    "badges": {
+      "heading": "Insignias",
+      "default": "Formato completo",
+      "secondary": "APS-C",
+      "outline": "Micro Cuatro Tercios",
+      "destructive": "Descontinuada"
+    },
+    "table": {
+      "heading": "Tabla",
+      "caption": "Cámaras en el catálogo de ejemplo",
+      "brand": "Marca",
+      "model": "Modelo",
+      "mount": "Montura",
+      "sensorFormat": "Formato del sensor",
+      "megapixels": "Megapíxeles"
+    }
+  }
+}

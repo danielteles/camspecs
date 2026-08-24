@@ -70,6 +70,7 @@ export async function generateMetadata({
       languages: {
         en: `/en/cameras/${slug}`,
         "pt-BR": `/pt-BR/cameras/${slug}`,
+        es: `/es/cameras/${slug}`,
       },
     },
     openGraph: { title, description },

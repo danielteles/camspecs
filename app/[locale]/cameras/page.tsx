@@ -21,7 +21,11 @@ export async function generateMetadata({
     description: t("description"),
     alternates: {
       canonical: `/${locale}/cameras`,
-      languages: { en: "/en/cameras", "pt-BR": "/pt-BR/cameras" },
+      languages: {
+        en: "/en/cameras",
+        "pt-BR": "/pt-BR/cameras",
+        es: "/es/cameras",
+      },
     },
   };
 }
