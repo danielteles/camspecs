@@ -191,11 +191,29 @@ def _parse_release_year(text: str | None) -> int | None:
     return int(match.group(1)) if match else None
 
 
+
+# OM System is the one brand in KNOWN_BRAND_PREFIXES that isn't a single
+# word, so the naive first-space split below mis-parses it: a camera page's
+# "OM System OM-1 Mark II" split on the first space alone yields
+# brand="OM", model="System OM-1 Mark II" — the word "System" leaks into
+# the model text as well as the brand being truncated. Confirmed live:
+# lens pages hyphenate it instead ("OM-System M.Zuiko..."), which the
+# naive split parses correctly as one token — so this only bites camera
+# pages. Checked case-insensitively and before the generic split.
+_MULTI_WORD_BRAND_PREFIXES = ("OM System",)
+
+
 def _split_brand_model(display_name: str) -> tuple[str, str]:
     # Versus doesn't expose brand/model as separate fields, only a combined
-    # display name ("Sony Alpha 7 IV"). Every brand on the site is a single
-    # word, so splitting on the first space is reliable in practice.
-    parts = display_name.strip().split(" ", 1)
+    # display name ("Sony Alpha 7 IV"). Every brand on the site but OM
+    # System (see _MULTI_WORD_BRAND_PREFIXES) is a single word, so splitting
+    # on the first space is reliable for everything else.
+    stripped = display_name.strip()
+    for brand in _MULTI_WORD_BRAND_PREFIXES:
+        if stripped.lower().startswith(brand.lower() + " "):
+            return brand, stripped[len(brand) :].strip()
+
+    parts = stripped.split(" ", 1)
     if len(parts) == 2:
         return parts[0], parts[1]
     return parts[0], ""

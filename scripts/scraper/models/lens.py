@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator, model_validator
 
-from .parsers import normalize_mount, parse_float, parse_weight_grams, slugify
+from .parsers import normalize_brand, normalize_mount, parse_float, parse_weight_grams, slugify
 
 
 class LensSpecs(BaseModel):
@@ -32,6 +32,11 @@ class LensSpecs(BaseModel):
     source: str
     source_url: HttpUrl | None = None
     scraped_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+    @field_validator("brand", mode="before")
+    @classmethod
+    def _normalize_brand(cls, value: str) -> str:
+        return normalize_brand(value)
 
     @field_validator("mount", mode="before")
     @classmethod
