@@ -9,6 +9,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
+import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 
 export interface FilterSectionOption {
@@ -54,6 +55,10 @@ interface FilterSidebarProps {
    */
   idPrefix?: string;
   className?: string;
+  /** Shows an inline spinner while a filter change is being applied. */
+  isPending?: boolean;
+  /** Text announced next to the spinner and to screen readers via aria-live. */
+  pendingLabel?: string;
 }
 
 function CheckboxSection({
@@ -147,27 +152,43 @@ export function FilterSidebar({
   defaultOpenSections,
   idPrefix = "",
   className,
+  isPending = false,
+  pendingLabel,
 }: FilterSidebarProps) {
   return (
-    <Accordion
-      type="multiple"
-      defaultValue={
-        defaultOpenSections ?? sections.map((section) => section.id)
-      }
-      className={className}
-    >
-      {sections.map((section) => (
-        <AccordionItem key={section.id} value={section.id}>
-          <AccordionTrigger>{section.label}</AccordionTrigger>
-          <AccordionContent>
-            {section.type === "checkbox" ? (
-              <CheckboxSection section={section} idPrefix={idPrefix} />
-            ) : (
-              <RangeSection section={section} />
-            )}
-          </AccordionContent>
-        </AccordionItem>
-      ))}
-    </Accordion>
+    <div className={className}>
+      {pendingLabel && (
+        <div
+          aria-live="polite"
+          className="text-muted-foreground mb-3 flex h-4 items-center gap-1.5 text-xs"
+        >
+          {isPending && (
+            <>
+              <Spinner className="size-3.5" />
+              <span>{pendingLabel}</span>
+            </>
+          )}
+        </div>
+      )}
+      <Accordion
+        type="multiple"
+        defaultValue={
+          defaultOpenSections ?? sections.map((section) => section.id)
+        }
+      >
+        {sections.map((section) => (
+          <AccordionItem key={section.id} value={section.id}>
+            <AccordionTrigger>{section.label}</AccordionTrigger>
+            <AccordionContent>
+              {section.type === "checkbox" ? (
+                <CheckboxSection section={section} idPrefix={idPrefix} />
+              ) : (
+                <RangeSection section={section} />
+              )}
+            </AccordionContent>
+          </AccordionItem>
+        ))}
+      </Accordion>
+    </div>
   );
 }

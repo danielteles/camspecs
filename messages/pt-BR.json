@@ -81,7 +81,8 @@
     "resetCta": "Redefinir filtros",
     "removeFilter": "Remover filtro {label}",
     "activeFiltersLabel": "Filtros ativos",
-    "applyLabel": "Mostrar {count} resultados"
+    "applyLabel": "Mostrar {count} resultados",
+    "updatingLabel": "Atualizando resultados…"
   },
   "CompareSelector": {
     "triggerLabel": "Adicionar uma câmera ou lente…",

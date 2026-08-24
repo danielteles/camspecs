@@ -324,6 +324,8 @@ export function CamerasCatalog({ cameras, allCameras }: CamerasCatalogProps) {
             applyLabel={tFilters("applyLabel", {
               count: displayedCameras.length,
             })}
+            isPending={isPending}
+            pendingLabel={tFilters("updatingLabel")}
           />
         </div>
       </div>
@@ -338,15 +340,21 @@ export function CamerasCatalog({ cameras, allCameras }: CamerasCatalogProps) {
 
       <div className="flex flex-col gap-6 md:flex-row md:items-start md:gap-8">
         <aside className="hidden shrink-0 md:block md:w-56">
-          <FilterSidebar sections={sections} idPrefix="desktop-" />
+          <FilterSidebar
+            sections={sections}
+            idPrefix="desktop-"
+            isPending={isPending}
+            pendingLabel={tFilters("updatingLabel")}
+          />
         </aside>
 
         <div
           className={cn(
-            "min-w-0 flex-1",
-            isPending && "opacity-60 transition-opacity",
+            "min-w-0 flex-1 transition-opacity",
+            isPending && "pointer-events-none opacity-50",
           )}
           aria-busy={isPending}
+          aria-live="polite"
         >
           {displayedCameras.length === 0 ? (
             <div className="flex flex-col items-start gap-3">
