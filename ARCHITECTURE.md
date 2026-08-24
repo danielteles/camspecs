@@ -467,6 +467,14 @@ model text first. This stops a legal company name, for example "Sony
 Group", from splitting one real item into two records. It also stops a
 repeated brand name, for example "Canon EOS R10", from doing the same.
 
+`normalize_lens_model_text` (`models/parsers.py`) fixes a matching gap
+for an aperture value inside a lens model, for example "F5.6" against
+"f/5.6" for the same lens. `merge_key` already treated both forms as
+one item, but each form produced a different slug. This let the same
+lens reach the database as two separate rows. This gap caused 66
+duplicate lens records and 1 duplicate camera record in one production
+catalog, confirmed live.
+
 Within a group, a priority order decides each field. A manufacturer
 record (`source` prefixed `manufacturer:`) wins over the specifications
 site's record. The specifications site's record wins over the

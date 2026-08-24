@@ -211,8 +211,13 @@ curated_fallbacks.py` holds small, named lists of facts that no
   sources, for example a legal company name against a plain brand name.
   `strip_redundant_brand_prefix` removes a brand name that a source
   repeats inside the model text. One example is a model field that
-  starts with its own brand name. Both checks run inside the schema
-  itself, so every source gets the same treatment.
+  starts with its own brand name. `normalize_lens_model_text` fixes a
+  known aperture-notation difference in a lens model, for example
+  "F5.6" against "f/5.6" for the same lens. `merge_key` already treats
+  both forms as one item, but the slug built from each form used to
+  differ. This let the same lens land in the database as two separate
+  rows. Every check in this list runs inside the schema itself, so
+  every source gets the same treatment.
 
 The upsert stage adds one more layer of protection. It never replaces a
 value already saved from an earlier run. A gap that a later run fills
