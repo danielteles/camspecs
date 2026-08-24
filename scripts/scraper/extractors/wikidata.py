@@ -51,7 +51,40 @@ MOUNT_QIDS = {
     "fujifilm-g": "Q65553416",  # Fujifilm G-mount (medium format)
     "micro-four-thirds": "Q1366492",  # Micro Four Thirds system
     "l-mount": "Q30242162",  # L-Mount
+    # Leica M-mount (Q313909). Verified live: 5 real, English-labeled camera
+    # items (M8, M9, M10-P, M11, M10-R) join via P2935 under
+    # CAMERA_MODEL_QID, same shape as every other mount here. No lens items
+    # join (0 results on the lens side) — harmless, same as any mount
+    # occasionally returning 0 for one entity type. Registering this mount
+    # also required updates outside this file — see lib/types.ts,
+    # lib/mounts.ts, lib/services/equipment.ts, and README.md's
+    # "Architecture: supported mounts" (all three frontend enforcement
+    # points plus docs, per that section's own instructions for adding a
+    # mount).
+    "leica-m": "Q313909",
 }
+# Two brands from the plan's brand-coverage list were investigated live and
+# deliberately NOT added here — both are genuine Wikidata data gaps, not a
+# missing QID this file was overlooking:
+#   - Hasselblad: its XCD-mount item (Q116006225) exists, but zero cameras
+#     or lenses reference it as instance-of CAMERA_MODEL_QID/LENS_MODEL_QID
+#     with a resolvable English label — the one item that references the
+#     mount at all is classified under a different, broader "camera model"
+#     class (Q20888659) this pipeline doesn't query, and has no English
+#     label anyway. Widening CAMERA_MODEL_QID to catch it would risk pulling
+#     in unrelated noise across every other brand for one unlabeled item.
+#     Hasselblad is already covered by extractors/versus.py's discovery
+#     instead (hasselblad-x1d, hasselblad-x2d-ii-100c).
+#   - Sigma / Tamron: manufacturer resolution already works fine (P176
+#     correctly resolves to "Sigma Corporation" / normalizes to "Sigma" via
+#     the existing corporate-suffix fallback below — verified live on Sigma
+#     20mm F1.4 DG HSM Art, Q24833960) — the actual gap is that third-party
+#     lens items are largely missing the P2935 (mount) statement this
+#     query's join requires (confirmed on that same item: P176, P2151 both
+#     present, P2935 absent). No amount of manufacturer-QID work fixes a
+#     missing mount statement on the item itself. Also already covered by
+#     extractors/versus.py's discovery (sigma-*, tamron-* standalone lens
+#     pages).
 # The reverse lookup camera/lens bindings use to resolve a mount QID to our
 # canonical MountId slug directly, instead of running Wikidata's English
 # label ("Canon RF lens mount", "L-Mount", "Micro Four Thirds system", ...)
@@ -86,15 +119,14 @@ _MIN_ENTITIES_PER_MOUNT = 3
 def _per_mount_limit(total_limit: int) -> int:
     """Splits one global entity limit into an even per-mount share.
 
-    Floors at `_MIN_ENTITIES_PER_MOUNT` so a low `--wikidata-limit` (e.g. a
-    quick scoped test run) can't round a low-cadence mount's share down to
-    zero the same way pooling everything into one shared LIMIT already did
-    (see the module-level note above `_MIN_ENTITIES_PER_MOUNT`) — 3 was
-    picked as enough to consistently surface at least one item per mount
-    after client-side validation drops (`_map_camera_binding`/
-    `_map_lens_binding` reject unresolved labels or missing required
-    fields), without the total pull ballooning far past today's single-query
-    default (7 mounts x 3 = 21, versus the previous flat 25).
+    Floors at `_MIN_ENTITIES_PER_MOUNT` so a low total (e.g. a quick scoped
+    test run) can't round a low-cadence mount's share down to zero the same
+    way pooling everything into one shared LIMIT already did (see the
+    module-level note above `_MIN_ENTITIES_PER_MOUNT`) — 3 was picked as
+    enough to consistently surface at least one item per mount after
+    client-side validation drops (`_map_camera_binding`/`_map_lens_binding`
+    reject unresolved labels or missing required fields), without the floor
+    itself ballooning the total pull (8 mounts x 3 = 24 at the floor).
     """
     return max(_MIN_ENTITIES_PER_MOUNT, total_limit // len(MOUNT_QIDS))
 
@@ -362,15 +394,16 @@ def _map_lens_binding(binding: dict[str, Any]) -> dict[str, Any] | None:
     }
 
 
-async def fetch_cameras(client: httpx.AsyncClient, limit: int = 25) -> list[CameraSpecs]:
+async def fetch_cameras(client: httpx.AsyncClient, limit: int = 150) -> list[CameraSpecs]:
     """Fetches cameras for every supported mount, one query per mount.
 
-    `limit` is the same overall budget the CLI's `--wikidata-limit` has
-    always documented — see `_per_mount_limit` for how it's split so a
-    low-cadence mount (Fujifilm G) can't be crowded out of its share by a
-    high-cadence one (Sony E, Canon RF) the way a single pooled query would.
-    Queries run concurrently so partitioning by mount doesn't multiply this
-    function's wall-clock time by `len(MOUNT_QIDS)`.
+    `limit` is the overall budget the CLI's `--camera-limit` documents — see
+    `_per_mount_limit` for how it's split so a low-cadence mount (Fujifilm G)
+    can't be crowded out of its share by a high-cadence one (Sony E, Canon
+    RF) the way a single pooled query would. Queries run concurrently so
+    partitioning by mount doesn't multiply this function's wall-clock time
+    by `len(MOUNT_QIDS)`. Default raised from an original flat 25 to 150 per
+    the site's expanded ~50-camera catalog target.
     """
     per_mount_limit = _per_mount_limit(limit)
     payloads = await asyncio.gather(
@@ -404,14 +437,15 @@ async def fetch_cameras(client: httpx.AsyncClient, limit: int = 25) -> list[Came
     return results
 
 
-async def fetch_lenses(client: httpx.AsyncClient, limit: int = 25) -> list[LensSpecs]:
+async def fetch_lenses(client: httpx.AsyncClient, limit: int = 200) -> list[LensSpecs]:
     """Fetches lenses for every supported mount, one query per mount.
 
     Same per-mount partitioning as `fetch_cameras` — see its docstring and
     `_per_mount_limit`. The lens side is where this matters most: verified
     live, Sony E's lens catalog alone fills every slot of the old shared-
     LIMIT-25 query, so Fujifilm G (GF) got zero lenses at any tested limit
-    under the previous single-query design.
+    under the previous single-query design. Default raised from an original
+    flat 25 to 200 per the site's expanded ~60-lens catalog target.
     """
     per_mount_limit = _per_mount_limit(limit)
     payloads = await asyncio.gather(
@@ -470,18 +504,18 @@ SELECT ?pubDate ?announceDate WHERE {{
     return _parse_release_year(bindings[0])
 
 
-async def _run(entity_type: str, limit: int) -> None:
+async def _run(entity_type: str, camera_limit: int, lens_limit: int) -> None:
     async with httpx.AsyncClient(
         headers={"User-Agent": USER_AGENT}, timeout=REQUEST_TIMEOUT_S
     ) as client:
         if entity_type in ("camera", "both"):
-            cameras = await fetch_cameras(client, limit)
+            cameras = await fetch_cameras(client, camera_limit)
             print(f"\n=== Cameras ({len(cameras)}) ===")
             for camera in cameras:
                 print(camera.model_dump_json(indent=2))
 
         if entity_type in ("lens", "both"):
-            lenses = await fetch_lenses(client, limit)
+            lenses = await fetch_lenses(client, lens_limit)
             print(f"\n=== Lenses ({len(lenses)}) ===")
             for lens in lenses:
                 print(lens.model_dump_json(indent=2))
@@ -491,15 +525,21 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Fetch camera/lens specs from Wikidata via SPARQL.")
     parser.add_argument("--type", choices=["camera", "lens", "both"], default="both")
     parser.add_argument(
-        "--limit",
+        "--camera-limit",
         type=int,
-        default=25,
-        help="Entity budget per type, split evenly across mounts (see _per_mount_limit)",
+        default=150,
+        help="Camera entity budget, split evenly across mounts (see _per_mount_limit)",
+    )
+    parser.add_argument(
+        "--lens-limit",
+        type=int,
+        default=200,
+        help="Lens entity budget, split evenly across mounts (see _per_mount_limit)",
     )
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-    asyncio.run(_run(args.type, args.limit))
+    asyncio.run(_run(args.type, args.camera_limit, args.lens_limit))
 
 
 if __name__ == "__main__":

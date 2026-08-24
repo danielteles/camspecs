@@ -8,7 +8,8 @@ export type MountId =
   | "fujifilm-x"
   | "fujifilm-g"
   | "micro-four-thirds"
-  | "l-mount";
+  | "l-mount"
+  | "leica-m";
 
 export interface Mount {
   id: MountId;

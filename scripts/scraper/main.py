@@ -173,7 +173,8 @@ def _merge_unique(curated: list[str], discovered: list[str]) -> list[str]:
 
 
 async def fetch_all(
-    wikidata_limit: int,
+    wikidata_camera_limit: int,
+    wikidata_lens_limit: int,
     nikon_urls: list[str],
     versus_camera_slugs: list[str],
     versus_lens_slugs: list[str],
@@ -185,8 +186,8 @@ async def fetch_all(
         headers={"User-Agent": wikidata.USER_AGENT}, timeout=wikidata.REQUEST_TIMEOUT_S
     ) as client:
         wikidata_cameras, wikidata_lenses = await asyncio.gather(
-            wikidata.fetch_cameras(client, wikidata_limit),
-            wikidata.fetch_lenses(client, wikidata_limit),
+            wikidata.fetch_cameras(client, wikidata_camera_limit),
+            wikidata.fetch_lenses(client, wikidata_lens_limit),
         )
     cameras.extend(wikidata_cameras)
     lenses.extend(wikidata_lenses)
@@ -278,7 +279,11 @@ async def run_pipeline(args: argparse.Namespace) -> None:
 
     with Timer("Fetch") as t_fetch:
         raw_cameras, raw_lenses = await fetch_all(
-            args.wikidata_limit, args.nikon_urls, versus_camera_slugs, versus_lens_slugs
+            args.wikidata_camera_limit,
+            args.wikidata_lens_limit,
+            args.nikon_urls,
+            versus_camera_slugs,
+            versus_lens_slugs,
         )
     logger.info(
         "Fetched %d raw camera record(s), %d raw lens record(s)", len(raw_cameras), len(raw_lenses)
@@ -351,14 +356,21 @@ async def run_pipeline(args: argparse.Namespace) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run the full camspecs scraper pipeline.")
     parser.add_argument(
-        "--wikidata-limit",
+        "--wikidata-camera-limit",
         type=int,
-        default=25,
+        default=150,
         help=(
-            "Entity budget per type from Wikidata, split evenly across mounts so a "
+            "Camera entity budget from Wikidata, split evenly across mounts so a "
             "low-cadence mount (e.g. Fujifilm G) isn't crowded out of its share by a "
             "high-cadence one (see extractors/wikidata.py's _per_mount_limit)"
         ),
+    )
+    parser.add_argument(
+        "--wikidata-lens-limit",
+        type=int,
+        default=200,
+        help="Lens entity budget from Wikidata, split evenly across mounts (same reasoning "
+        "as --wikidata-camera-limit)",
     )
     parser.add_argument(
         "--nikon-urls",
