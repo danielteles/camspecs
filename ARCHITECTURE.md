@@ -357,6 +357,68 @@ A user reaches a product page from a card built by the shared
 comparison directly. Both actions worked the same way before this
 feature existed.
 
+## Filter sliders
+
+The range sliders in `FilterSidebar` (`components/filter-sidebar.tsx`) move
+the thumb and update the label while you drag them, not only after you
+release them.
+
+`RangeSection`, inside the same file, renders each range slider. Radix
+`Slider` is a controlled component. It renders only the `value` prop it
+receives. It keeps no copy of this value on its own.
+
+`CamerasCatalog` and `LensesCatalog` read this value from the URL, through
+`useSearchParams()`. A filter change writes a new value to the URL with
+`router.replace`, inside `startTransition`. This call is not instant.
+
+The old code passed the URL value straight into `value`. It called the
+same `router.replace` update on every `onValueChange` event, once for each
+pointer move. As a result, the thumb waited for each `router.replace` call
+to finish before it moved on screen.
+
+`RangeSection` now keeps a local `liveValue` state, set from `section.value`
+at first. Radix fires `onValueChange` on every pointer move. `RangeSection`
+writes each new value into `liveValue` at once. The thumb and the label
+update with it.
+
+Radix also fires a separate event, `onValueCommit`, exactly once. It fires
+when you release the slider, or when you press an arrow key. `RangeSection`
+passes the parent's URL-writing `onChange` function to `onValueCommit`, not
+to `onValueChange`. One drag now sends one `router.replace` call, not one
+call for each pointer move.
+
+`RangeSection` also holds the previous `section.value`, in a second
+`useState` call. It compares this stored value against the current
+`section.value` on every render. When the two differ, for example after a
+user removes an active filter chip, it resets `liveValue` to match. This
+check and reset happen inside the render body itself, not inside a
+`useEffect` call. A `setState` call inside `useEffect`, for this same
+purpose, causes an extra, avoidable render pass.
+
+### Testing this behavior
+
+`vitest.setup.tsx` gave every DOM element a fake `hasPointerCapture`
+method. This method always returned `false`. Radix `Slider` checks
+`hasPointerCapture` before it reacts to a `pointermove` or a `pointerup`
+event. The old fake method blocked every simulated drag in a test, with no
+error message.
+
+The updated fake method stores each captured pointer ID in a `WeakMap`, one
+set for each element. `hasPointerCapture` now returns `true` only after
+`setPointerCapture` runs for that same pointer, on that same element. This
+matches the rule that a real browser follows.
+
+`components/filter-sidebar.test.tsx` also gives the slider element a fake
+`getBoundingClientRect` result. jsdom returns a rectangle of zero width and
+zero height by default. Radix `Slider` computes the dragged value from the
+pointer's `clientX` position and this rectangle's width, so a zero width
+breaks that math.
+
+Two tests run a full `pointerdown` → `pointermove` → `pointerup` sequence
+on the slider. Each test checks the label text and the thumb's
+`aria-valuenow` value after a `pointermove` event, before the matching
+`pointerup` event.
+
 ## Loading feedback
 
 This section explains the loading feedback that the catalog pages and
@@ -624,7 +686,7 @@ have React Testing Library tests, run in a `jsdom` environment
 card, the compare selector, the compare-page swap-and-copy actions, the
 navbar, the footer, the last-updated badge, and the three filter
 components (`FilterSidebar`, `MobileFilterDrawer`, `ActiveFilterBadges`).
-The project has 196 tests, across 19 files, at last count.
+The project has 198 tests, across 19 files, at last count.
 
 Three interactive pieces still have no automated coverage: the diff
 toggle, the field-of-view slider, and locale switching that keeps the
