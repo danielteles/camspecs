@@ -52,7 +52,8 @@
       "maxWeightFilterLabel": "Peso máximo",
       "minResolutionChip": "{value} MP o más",
       "maxWeightChip": "{value} g o menos",
-      "noResults": "Ninguna cámara coincide con los criterios seleccionados."
+      "noResults": "Ninguna cámara coincide con los criterios seleccionados.",
+      "loadingLabel": "Cargando cámaras…"
     },
     "lenses": {
       "title": "Lentes",
@@ -70,7 +71,8 @@
       "maxApertureFilterLabel": "Apertura máxima",
       "focalLengthChip": "{min}–{max}mm",
       "maxApertureChip": "ƒ/{value} o más rápido",
-      "noResults": "Ningún lente coincide con los criterios seleccionados."
+      "noResults": "Ningún lente coincide con los criterios seleccionados.",
+      "loadingLabel": "Cargando lentes…"
     }
   },
   "Filters": {
