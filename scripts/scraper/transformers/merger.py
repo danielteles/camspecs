@@ -15,6 +15,11 @@ from typing import TypeVar
 
 from pydantic import BaseModel
 
+from extractors.curated_fallbacks import LENS_KIT_RELEASE_YEARS, MOUNT_SENSOR_FORMATS
+from models.camera import CameraSpecs
+from models.enums import SensorFormat
+from models.lens import LensSpecs
+
 T = TypeVar("T", bound=BaseModel)
 
 # Fields that identify *which* source(s) produced a record rather than
@@ -105,3 +110,83 @@ def merge_records(records: list[T]) -> list[T]:
         groups.setdefault(key, []).append(record)
 
     return [_merge_group(group) for group in groups.values()]
+
+
+def drop_unmergeable_wikidata_cameras(cameras: list[CameraSpecs]) -> list[CameraSpecs]:
+    """Drop merged camera records that only Wikidata ever contributed to.
+
+    Wikidata has no populated sensor-format property for camera items (see
+    extractors/wikidata.py's `_map_camera_binding`) — every Wikidata camera
+    record is created with `sensor_format="other"`. That value only
+    survives into the merged record when no manufacturer/Versus source also
+    covers the same camera: `_is_empty()` treats "other" as a real,
+    non-empty value, so a higher-priority source's real format always wins
+    the merge instead of being backfilled over. A merged record with
+    `sensor_format=="other"` and no manufacturer/Versus contribution is
+    therefore never going to resolve a real sensor format — no fallback
+    (transformers/sensor_fallback.py) or frontend rule (see
+    lib/services/equipment.ts's `toCamera`) can save it — so keeping it
+    around just means upserting a row nobody will ever see. Checking
+    `source == "wikidata"` rather than just the format alone avoids
+    dropping a genuine manufacturer/Versus record that happens to land on
+    "other" itself (a real, separately-diagnosable scraping gap, not this
+    problem).
+    """
+    return [
+        camera
+        for camera in cameras
+        if not (camera.sensor_format == SensorFormat.OTHER and camera.source == "wikidata")
+    ]
+
+
+def apply_curated_sensor_format_overrides(cameras: list[CameraSpecs]) -> list[CameraSpecs]:
+    """Backfill sensor_format for mounts where it's a settled physical fact.
+
+    Must run before `drop_unmergeable_wikidata_cameras` in the pipeline —
+    see `extractors.curated_fallbacks.MOUNT_SENSOR_FORMATS` for which three
+    mounts qualify (and why the rest deliberately don't) — otherwise every
+    Wikidata-only camera this could save is already gone by the time it
+    runs. Only touches records still stuck at "other"; a real format from a
+    higher-priority source is left alone.
+    """
+    for camera in cameras:
+        if camera.sensor_format != SensorFormat.OTHER:
+            continue
+        override = MOUNT_SENSOR_FORMATS.get(camera.mount)
+        if override is not None:
+            camera.sensor_format = override
+    return cameras
+
+
+def _versus_kit_slug(source_url: object) -> str | None:
+    if source_url is None:
+        return None
+    return str(source_url).rstrip("/").rsplit("/", 1)[-1]
+
+
+def apply_curated_lens_release_years(lenses: list[LensSpecs]) -> list[LensSpecs]:
+    """Backfill release_year for the lens-kit slugs with a confirmed Wikidata gap.
+
+    See `extractors.curated_fallbacks.LENS_KIT_RELEASE_YEARS` for which
+    slugs and why: each was checked live against its own Wikidata QID and
+    found to carry no date statement at all, so the normal cross-source
+    backfill in `merge_records` never has anything to pull from. Matched by
+    the Versus kit slug embedded in `source_url` (see `extractors/versus.py`'s
+    `BASE_URL`) rather than the record's own auto-generated `slug`, since
+    that slug is derived from scraped display text and isn't a stable lookup
+    key the way the kit slug — already hardcoded and live-verified in
+    `main.py`'s `DEFAULT_VERSUS_LENS_SLUGS` — is. `source_url` survives
+    `merge_records` unchanged (it's a provenance field, never backfilled)
+    for every lens this dictionary targets, since Versus outranks Wikidata
+    and is always the higher-priority source for these kit-derived records.
+    """
+    for lens in lenses:
+        if lens.release_year is not None:
+            continue
+        slug = _versus_kit_slug(lens.source_url)
+        if slug is None:
+            continue
+        override = LENS_KIT_RELEASE_YEARS.get(slug)
+        if override is not None:
+            lens.release_year = override
+    return lenses

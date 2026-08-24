@@ -45,8 +45,10 @@ BASE_URL = "https://versus.com/en/{slug}"
 # slug for this camera is "sony-alpha-7-iv" ("sony-a7-iv" also resolves, via
 # redirect). Verified live.
 DEFAULT_CAMERA_SLUG = "sony-alpha-7-iv"
-# Versus has no standalone lens product pages — lenses only appear bundled
-# into a "camera + lens" kit slug, which is what's scraped for lens facts.
+# Versus has no standalone lens product pages for most mounts — lenses only
+# appear bundled into a "camera + lens" kit slug, which is what's scraped
+# for lens facts (see `map_lens_specs`'s docstring for the confirmed
+# exception: Fujifilm GF lenses do have their own standalone pages).
 DEFAULT_LENS_KIT_SLUG = "sony-alpha-7-iv-sony-fe-50mm-f1-8"
 
 USER_AGENT = (
@@ -59,6 +61,33 @@ MAX_ATTEMPTS = 2
 
 _PAYLOAD_SCRIPT_SELECTOR = 'script#payload[type="application/json"]'
 _YEAR_PATTERN = re.compile(r"\b(1[89]\d{2}|20\d{2})\b")
+
+# Versus's 404 is a soft 404: the AWS WAF challenge response Playwright
+# navigates to is always HTTP 202 regardless of whether the slug exists
+# (verified live — the challenge resolves client-side without a further
+# top-level navigation, so `page.goto()`'s response status never reflects
+# the final rendered page). The only reliable signal is what the SPA
+# renders: a real product page gets a `tr[data-spec]` row and a normal
+# title, a missing one settles on `document.title === "Not found"` with no
+# spec table. Racing both conditions with `wait_for_function` instead of
+# waiting out the full spec-table timeout before checking resolves either
+# case in ~1s (verified live) rather than the full SPEC_TABLE_TIMEOUT_MS.
+_PAGE_SETTLED_JS = (
+    "() => document.title === 'Not found' "
+    "|| document.querySelector('tr[data-spec]') !== null"
+)
+_NOT_FOUND_TITLE = "Not found"
+
+
+class VersusSlugError(RuntimeError):
+    """Raised when a Versus.com slug doesn't resolve to a real product page.
+
+    Distinct from the retryable `PlaywrightTimeoutError` path: a 404 is a
+    fact about the slug, not a transient WAF/network hiccup, so retrying it
+    would just burn the full NAV_TIMEOUT_MS/SPEC_TABLE_TIMEOUT_MS budget
+    twice for a page that will never resolve (see the "guessed kit slugs
+    failed with 404s" issue this was written to fix).
+    """
 
 
 def _spec_text(soup: BeautifulSoup, key: str) -> str | None:
@@ -119,7 +148,12 @@ async def _fetch_rendered_soup(slug: str) -> BeautifulSoup:
 
     Retries the whole navigation (not just the request) since a failure here
     is usually the WAF challenge not having resolved in time, which a fresh
-    page load recovers from.
+    page load recovers from. A real 404 (see `_PAGE_SETTLED_JS`'s docstring
+    note) is checked for and raised immediately instead, without retrying:
+    it's a fact about the slug, not a transient failure a retry could fix,
+    and every kit slug is bundle-guessed from a camera + lens pairing
+    (Versus has no standalone lens pages) so 404s are the expected failure
+    mode for a guess that didn't pan out, not the exception.
     """
     url = BASE_URL.format(slug=slug)
     last_exc: Exception | None = None
@@ -130,13 +164,15 @@ async def _fetch_rendered_soup(slug: str) -> BeautifulSoup:
                 try:
                     page = await browser.new_page(user_agent=USER_AGENT)
                     await page.goto(url, timeout=NAV_TIMEOUT_MS, wait_until="domcontentloaded")
-                    await page.wait_for_selector(
-                        "tr[data-spec]", timeout=SPEC_TABLE_TIMEOUT_MS
-                    )
+                    await page.wait_for_function(_PAGE_SETTLED_JS, timeout=SPEC_TABLE_TIMEOUT_MS)
+                    if await page.title() == _NOT_FOUND_TITLE:
+                        raise VersusSlugError(f"Versus slug {slug!r} does not exist (404)")
                     html = await page.content()
                 finally:
                     await browser.close()
             return BeautifulSoup(html, "html.parser")
+        except VersusSlugError:
+            raise
         except PlaywrightTimeoutError as exc:
             last_exc = exc
             logger.warning(
@@ -172,20 +208,29 @@ def map_camera_specs(soup: BeautifulSoup, slug: str) -> dict[str, Any]:
 
 
 def map_lens_specs(soup: BeautifulSoup, slug: str) -> dict[str, Any]:
-    """Map a scraped Versus kit page's DOM into a raw LensSpecs dict.
+    """Map a scraped Versus lens page's DOM into a raw LensSpecs dict.
 
-    Versus has no standalone lens pages — this reads the lens half of a
-    "camera + lens" kit page. Weight and release date on these pages are the
-    *camera's* figures (verified: identical to the camera's solo page), so
-    they're deliberately left unmapped here rather than mis-attributed to
-    the lens.
+    Two page shapes exist here, verified live. Most mounts (Sony E, Canon
+    RF, Nikon Z, Fujifilm X) only have "camera + lens" kit pages — Versus
+    has no standalone product page for those lenses at all — so
+    `display_name` there is "Camera Name + Lens Name" and only the lens half
+    is used; weight and release date on a kit page are the *camera's*
+    figures (verified: identical to the camera's solo page), so they're
+    deliberately left unmapped rather than mis-attributed to the lens.
+    Fujifilm's GF (medium format) lenses are a confirmed exception: they
+    have real standalone lens pages of their own (e.g.
+    "fujifilm-gf-63mm-f-2-8-r-wr"), where `display_name` is just the lens's
+    own name with no " + " delimiter — detected here via `is_kit_page`. On
+    a standalone page there's no camera to conflate with, so weight and
+    release date genuinely belong to the lens and are safe to map.
     """
     payload = _extract_payload(soup)
     display_name = _product_display_name(soup, payload)
-    lens_name = display_name.split(" + ", 1)[1] if display_name and " + " in display_name else None
+    is_kit_page = bool(display_name and " + " in display_name)
+    lens_name = display_name.split(" + ", 1)[1] if is_kit_page else display_name
     brand, model = _split_brand_model(lens_name) if lens_name else (None, None)
 
-    return {
+    raw: dict[str, Any] = {
         "brand": brand,
         "model": model,
         "mount": _spec_text(soup, "lens-mount"),
@@ -199,6 +244,10 @@ def map_lens_specs(soup: BeautifulSoup, slug: str) -> dict[str, Any]:
         "source": "versus",
         "source_url": BASE_URL.format(slug=slug),
     }
+    if not is_kit_page:
+        raw["weight_g"] = _spec_text(soup, "weight")
+        raw["release_year"] = _parse_release_year(_spec_text(soup, "release-date"))
+    return raw
 
 
 async def fetch_camera(slug: str = DEFAULT_CAMERA_SLUG) -> CameraSpecs:

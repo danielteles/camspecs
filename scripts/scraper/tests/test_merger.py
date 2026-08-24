@@ -11,7 +11,7 @@ from __future__ import annotations
 from pprint import pprint
 
 from models import CameraSpecs, LensSpecs
-from transformers.merger import merge_records
+from transformers.merger import drop_unmergeable_wikidata_cameras, merge_records
 
 # --- Cameras: manufacturer + Wikidata records for the *same* physical
 # camera, deliberately formatted differently ("Z6III" vs "Z6 III") and with
@@ -108,6 +108,33 @@ LENS_MANUFACTURER = {
     "source_url": "https://www.sony.com/electronics/camera-lenses/sel2470gm2",
 }
 
+# --- Cameras for drop_unmergeable_wikidata_cameras: one single-source
+# Wikidata record stuck at sensor_format="other" (must be dropped) and one
+# manufacturer-sourced record that also happens to land on "other" (a real,
+# separately-diagnosable manufacturer-scraper gap — must survive, since the
+# filter targets Wikidata's *structural* inability to supply a format, not
+# "other" on its own). ---
+
+CAMERA_WIKIDATA_ONLY_OTHER_FORMAT = {
+    "brand": "Sony",
+    "model": "Alpha 7 IV",
+    "mount": "Sony E-mount",
+    "sensor_format": "other",  # Wikidata's universal camera default
+    "release_year": 2021,
+    "source": "wikidata",
+    "source_url": "https://www.wikidata.org/wiki/Q999005",
+}
+
+CAMERA_MANUFACTURER_OTHER_FORMAT = {
+    "brand": "Sigma",
+    "model": "fp",
+    "mount": "L-Mount",
+    "sensor_format": "other",
+    "megapixels": 24.6,
+    "source": "manufacturer:sigma",
+    "source_url": "https://www.sigma-global.com/en/cameras/fp-series/fp/",
+}
+
 LENS_WIKIDATA = {
     "brand": "Sony",
     "model": "FE 24–70mm F2.8 GM II",  # en-dash instead of hyphen
@@ -190,6 +217,22 @@ def main() -> None:
     assert lens.release_year == 2022, "release_year must be backfilled from Wikidata"
     assert lens.source == "manufacturer:sony+wikidata", "merged source must list both contributors"
     print("OK  lens merge assertions passed")
+
+    print("\n=== Dropping unmergeable Wikidata-only cameras ===")
+    raw_drop_test = [
+        CameraSpecs.model_validate(CAMERA_WIKIDATA_ONLY_OTHER_FORMAT),
+        CameraSpecs.model_validate(CAMERA_MANUFACTURER_OTHER_FORMAT),
+    ]
+    merged_drop_test = merge_records(raw_drop_test)
+    assert len(merged_drop_test) == 2, "both single-source records pass merge unchanged"
+
+    filtered = drop_unmergeable_wikidata_cameras(merged_drop_test)
+    assert len(filtered) == 1, "only the Wikidata-only 'other'-format camera must be dropped"
+    assert filtered[0].slug == "sigma-fp", (
+        "the manufacturer-sourced 'other'-format camera must survive — its gap is real "
+        "and separately diagnosable, not this filter's concern"
+    )
+    print("OK  unmergeable Wikidata camera filter assertions passed")
 
     print("\nAll merge scenarios validated successfully.")
 

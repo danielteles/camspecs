@@ -9,6 +9,7 @@ import {
   SENSOR_FORMAT_BADGE_VARIANT,
   SENSOR_FORMAT_KEYS,
 } from "@/lib/compare-data";
+import { isDatabaseConfigured } from "@/lib/db/client";
 import { MOUNTS } from "@/lib/mounts";
 import { getAllCameras, getAllLenses } from "@/lib/services/equipment";
 
@@ -20,10 +21,19 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
 
   const t = await getTranslations("HomePage");
   const tGlobal = await getTranslations();
-  const [cameras, lenses] = await Promise.all([
-    getAllCameras(),
-    getAllLenses(),
-  ]);
+  // This route has no dynamic API usage, so Next.js statically prerenders
+  // it at build time by default — a CI build with the DB secret unset
+  // would otherwise hard-fail here the same way the catalog pages'
+  // unguarded fetches used to (see lib/db/client.ts).
+  let cameras: Awaited<ReturnType<typeof getAllCameras>> = [];
+  let lenses: Awaited<ReturnType<typeof getAllLenses>> = [];
+  if (isDatabaseConfigured()) {
+    [cameras, lenses] = await Promise.all([getAllCameras(), getAllLenses()]);
+  } else {
+    console.warn(
+      "[home] DATABASE_URL not set — skipping featured equipment fetch.",
+    );
+  }
 
   return (
     <main

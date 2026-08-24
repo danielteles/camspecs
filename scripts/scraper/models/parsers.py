@@ -26,7 +26,7 @@ def parse_float(value: Any) -> float | None:
 
 
 def parse_weight_grams(value: Any) -> int | None:
-    """Convert weight strings such as "658 g" or "1.2kg" into whole grams."""
+    """Convert weight strings such as "658 g", "1.2kg", or "1,030 g" into whole grams."""
     if value is None:
         return None
     if isinstance(value, (int, float)):
@@ -34,7 +34,13 @@ def parse_weight_grams(value: Any) -> int | None:
     text = str(value).strip()
     if not text:
         return None
-    match = _WEIGHT_PATTERN.search(text.replace(",", "."))
+    # A comma here is a thousands separator (Versus formats gram-scale
+    # weights as e.g. "1,030 g" — verified live on the Fujifilm GFX100 II
+    # page), never a decimal point: no camera or lens weighs a fractional
+    # gram. Stripping it outright, rather than converting it to "." the way
+    # parse_float does for genuinely decimal-comma fields like crop_factor,
+    # is what keeps "1,030 g" from being misread as 1.03g.
+    match = _WEIGHT_PATTERN.search(text.replace(",", ""))
     if not match:
         return None
     amount = float(match.group(1))

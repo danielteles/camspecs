@@ -21,7 +21,13 @@ from db.schema import create_all
 from db.upsert import upsert_cameras, upsert_lenses
 from extractors import nikon, versus, wikidata
 from models import CameraSpecs, LensSpecs
-from transformers.merger import merge_records
+from transformers.merger import (
+    apply_curated_lens_release_years,
+    apply_curated_sensor_format_overrides,
+    drop_unmergeable_wikidata_cameras,
+    merge_records,
+)
+from transformers.sensor_fallback import backfill_sensor_dimensions
 
 load_dotenv()
 logger = logging.getLogger(__name__)
@@ -46,8 +52,15 @@ NIKON_WIKIDATA_QIDS = {
 # always "other" (no populated property for it) and only gets backfilled by
 # whichever of these cameras also happens to come back from Wikidata's
 # recency-ordered crawl — so this list is deliberately broader than the 3
-# original entries to raise that overlap across all 4 manufacturer-scraped
-# mounts (Sony E, Canon RF, Nikon Z, Fujifilm X).
+# original entries to raise that overlap across all 5 manufacturer-scraped
+# mounts (Sony E, Canon RF, Nikon Z, Fujifilm X, Fujifilm G).
+#
+# The two GFX entries are confirmed live standalone product pages (full
+# spec table: sensor-format "Medium format", lens-mount "Fujifilm G",
+# megapixels, weight, release-date all populated) — same page shape as
+# every other camera slug here, nothing GFX-specific needed on the camera
+# side. See DEFAULT_VERSUS_LENS_SLUGS below for the GF *lens* side, which
+# did need an extractor change (extractors/versus.py's `map_lens_specs`).
 DEFAULT_VERSUS_CAMERA_SLUGS = [
     "sony-alpha-7-iv",
     "sony-alpha-6700",
@@ -58,15 +71,81 @@ DEFAULT_VERSUS_CAMERA_SLUGS = [
     "nikon-zf",
     "fujifilm-x-t5",
     "fujifilm-x-t50",
+    "fujifilm-gfx100s",
+    "fujifilm-gfx100-ii",
 ]
 
-# Versus.com has no standalone lens pages — every lens slug is a "camera +
-# lens" kit (see extractors/versus.py). Each entry here is scraped for its
-# lens half only; the camera half is already covered by
-# DEFAULT_VERSUS_CAMERA_SLUGS / DEFAULT_NIKON_URLS.
+# Versus.com has no standalone lens pages for most mounts — every one of
+# those lens slugs is a "camera + lens" kit (see extractors/versus.py).
+# Each such entry is scraped for its lens half only; the camera half is
+# already covered by DEFAULT_VERSUS_CAMERA_SLUGS / DEFAULT_NIKON_URLS.
+# Fujifilm's GF (medium format) lenses are the one confirmed exception —
+# real standalone lens pages of their own, no kit bundling at all (verified
+# live: "fujifilm-gfx100s-fujifilm-gf-32-64mm-f-4-r-lm-wr" 404s — no such
+# kit page exists for any GFX body). `extractors/versus.py`'s
+# `map_lens_specs` handles both page shapes.
+#
+# Every slug below was confirmed live (full spec table, not a 404) before
+# being added — kit slugs can't be derived from a naming pattern (verified:
+# "fujifilm-x-t5-fujifilm-xf-18-55mm-f2-8-4-r-lm-ois" 404s despite following
+# the same "{camera-slug}-{lens-brand}-{lens-model-slug}" shape every
+# working slug below does), only found via Versus's own search index or a
+# page's "cheap alternatives" links.
+#
+# Fujifilm X's 3 entries don't pair with either Fujifilm body in
+# DEFAULT_VERSUS_CAMERA_SLUGS (x-t5, x-t50) — searching those specific
+# bodies for a kit still turns up nothing live. The lens half doesn't need
+# to match our curated camera list, though: these 3 are still real, live
+# Fujifilm X-mount kit pages contributing real lens data, just bundled with
+# other Fujifilm bodies (X-E5, X-S10) that happen to have Versus kit
+# coverage. Note also: curl_cffi (even with Chrome TLS impersonation,
+# verified live) never gets past this — it only ever receives Versus's AWS
+# WAF JS-challenge page (HTTP 202, no real content), the same constraint
+# documented in extractors/versus.py for the whole site; every slug here
+# was found and confirmed via a real browser instead.
+#
+# The 3 Fujifilm G entries were found via Versus's own search index
+# ("fujifilm gf") rather than a camera-page's "cheap alternatives" list —
+# every GFX camera's alternatives are cross-brand kits (Canon/Sony/Nikon),
+# never a Fujifilm GF pairing, so that discovery path doesn't apply here.
 DEFAULT_VERSUS_LENS_SLUGS = [
-    "sony-alpha-7-iv-sony-fe-50mm-f1-8",
+    "sony-alpha-7-iv-sony-fe-50mm-f1-8",  # Sony E
+    "sony-alpha-6700-sony-e-18-135mm-f3-5-5-6-oss",  # Sony E
+    "canon-eos-r6-mark-ii-canon-rf-24-105mm-f-4l-is-usm",  # Canon RF
+    "canon-eos-r8-canon-rf-24-50mm-f-4-5-6-3-is-stm",  # Canon RF
+    "canon-eos-r5-canon-rf-24-105mm-f-4l-is-usm",  # Canon RF
+    "nikon-z6-iii-nikon-nikkor-z-24-120mm-f-4-s",  # Nikon Z
+    "nikon-zf-nikon-nikkor-z-40mm-f-2-se",  # Nikon Z
+    "fujifilm-x-e5-fujifilm-xf-23mm-f-2-8-r-wr",  # Fujifilm X
+    "fujifilm-x-s10-fujifilm-xf-18-55mm-f2-8-4-r-lm-ois",  # Fujifilm X
+    "fujifilm-x-s10-fujifilm-fujinon-xf-16-80mm-f-4-r-ois-wr",  # Fujifilm X
+    "fujifilm-gf-32-64mm-f-4-r-lm-wr",  # Fujifilm G (standalone page)
+    "fujifilm-gf-63mm-f-2-8-r-wr",  # Fujifilm G (standalone page)
+    "fujifilm-fujinon-gf-80mm-f-1-7-r-wr",  # Fujifilm G (standalone page)
 ]
+
+# Wikidata QIDs for each lens-kit slug's lens half, verified live — used
+# only to backfill release_year. Versus's kit pages deliberately don't
+# expose the lens's own release date (see extractors/versus.py's
+# map_lens_specs docstring: a kit's page only carries the camera's date,
+# and attaching that to the lens would misattribute it — a lens can predate
+# or postdate its kit camera by years), so it's never available from Versus
+# itself. Confirmed live, per QID, that Wikidata's own record has the
+# property populated at all before adding an entry here: 5 of these 6 items
+# have no P577/P6949 date statement whatsoever (a genuine upstream gap, not
+# a query-limit issue) and correctly backfill to still-null; only
+# sony-fe-50mm-f1-8 (Q30645819) has one, and it's missed by the general
+# Wikidata lens crawl's recency-ordered LIMIT window since the lens dates to
+# 2016 — same reasoning as NIKON_WIKIDATA_QIDS above, applied to lenses.
+VERSUS_LENS_WIKIDATA_QIDS = {
+    "sony-alpha-7-iv-sony-fe-50mm-f1-8": "Q30645819",
+    "sony-alpha-6700-sony-e-18-135mm-f3-5-5-6-oss": "Q116257084",
+    "canon-eos-r6-mark-ii-canon-rf-24-105mm-f-4l-is-usm": "Q97154591",
+    "canon-eos-r8-canon-rf-24-50mm-f-4-5-6-3-is-stm": "Q123130447",
+    "canon-eos-r5-canon-rf-24-105mm-f-4l-is-usm": "Q97154591",
+    "nikon-z6-iii-nikon-nikkor-z-24-120mm-f-4-s": "Q116719408",
+    "nikon-zf-nikon-nikkor-z-40mm-f-2-se": "Q116719420",
+}
 
 
 class Timer:
@@ -138,9 +217,22 @@ async def fetch_all(
 
     for slug in versus_lens_slugs:
         try:
-            lenses.append(await versus.fetch_lens(slug))
+            lens = await versus.fetch_lens(slug)
         except Exception:
             logger.exception("Skipping Versus lens slug after repeated failures: %s", slug)
+            continue
+
+        qid = VERSUS_LENS_WIKIDATA_QIDS.get(slug)
+        if lens.release_year is None and qid:
+            try:
+                async with httpx.AsyncClient(
+                    headers={"User-Agent": wikidata.USER_AGENT}, timeout=wikidata.REQUEST_TIMEOUT_S
+                ) as wikidata_client:
+                    lens.release_year = await wikidata.fetch_release_year(wikidata_client, qid)
+            except Exception:
+                logger.warning("Could not backfill release_year for %s from Wikidata", slug)
+
+        lenses.append(lens)
 
     return cameras, lenses
 
@@ -176,7 +268,17 @@ async def run_pipeline(args: argparse.Namespace) -> None:
     with Timer("Merge") as t_merge:
         cameras = merge_records(raw_cameras)
         lenses = merge_records(raw_lenses)
+        cameras = apply_curated_sensor_format_overrides(cameras)
+        pre_filter_count = len(cameras)
+        cameras = drop_unmergeable_wikidata_cameras(cameras)
+        cameras = backfill_sensor_dimensions(cameras)
+        lenses = apply_curated_lens_release_years(lenses)
     logger.info("Merged into %d camera(s), %d lens(es)", len(cameras), len(lenses))
+    if pre_filter_count != len(cameras):
+        logger.info(
+            "Dropped %d Wikidata-only camera(s) with no resolvable sensor format",
+            pre_filter_count - len(cameras),
+        )
 
     with Timer("Validate") as t_validate:
         # Every record is already a validated Pydantic instance by this
@@ -230,7 +332,14 @@ async def run_pipeline(args: argparse.Namespace) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run the full camspecs scraper pipeline.")
     parser.add_argument(
-        "--wikidata-limit", type=int, default=25, help="Max entities per type from Wikidata"
+        "--wikidata-limit",
+        type=int,
+        default=25,
+        help=(
+            "Entity budget per type from Wikidata, split evenly across mounts so a "
+            "low-cadence mount (e.g. Fujifilm G) isn't crowded out of its share by a "
+            "high-cadence one (see extractors/wikidata.py's _per_mount_limit)"
+        ),
     )
     parser.add_argument(
         "--nikon-urls",

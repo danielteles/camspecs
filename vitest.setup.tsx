@@ -125,6 +125,16 @@ vi.mock("next/navigation", () => ({
   useRouter: () => mockUseRouter(),
 }));
 
+// lib/db/client.ts: server components (Footer, page.tsx files) check this
+// before calling the equipment service, to skip DB access at build time
+// when DATABASE_URL is unset (see lib/db/client.ts's isDatabaseConfigured
+// docstring). Tests have no DATABASE_URL in their env either, so without
+// this mock every one of those call sites would see "not configured" and
+// skip straight past the equipment-service mock below.
+vi.mock("@/lib/db/client", () => ({
+  isDatabaseConfigured: vi.fn(() => true),
+}));
+
 // The Postgres-backed service layer (lib/services/equipment.ts): server
 // components (Footer, page.tsx files) call this directly, but unit tests
 // have no live database, so it resolves from the same fixtures other tests
