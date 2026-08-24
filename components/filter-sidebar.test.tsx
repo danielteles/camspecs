@@ -1,0 +1,151 @@
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { describe, expect, it, vi } from "vitest";
+
+import type {
+  CheckboxFilterSection,
+  RangeFilterSection,
+} from "@/components/filter-sidebar";
+import { FilterSidebar } from "@/components/filter-sidebar";
+
+function brandSection(
+  overrides: Partial<CheckboxFilterSection> = {},
+): CheckboxFilterSection {
+  return {
+    type: "checkbox",
+    id: "brand",
+    label: "Brand",
+    options: [
+      { value: "sony", label: "Sony", count: 3 },
+      { value: "fujifilm", label: "Fujifilm", count: 1 },
+      { value: "canon", label: "Canon", count: 0 },
+    ],
+    selected: [],
+    onChange: vi.fn(),
+    ...overrides,
+  };
+}
+
+function resolutionSection(
+  overrides: Partial<RangeFilterSection> = {},
+): RangeFilterSection {
+  return {
+    type: "range",
+    id: "resolution",
+    label: "Minimum resolution",
+    min: 12,
+    max: 60,
+    step: 1,
+    value: [24],
+    onChange: vi.fn(),
+    formatValue: (value) => `${value} MP`,
+    ...overrides,
+  };
+}
+
+describe("FilterSidebar", () => {
+  it("renders every section as an accordion trigger", () => {
+    render(<FilterSidebar sections={[brandSection(), resolutionSection()]} />);
+
+    expect(screen.getByRole("button", { name: "Brand" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Minimum resolution" }),
+    ).toBeInTheDocument();
+  });
+
+  it("renders each checkbox option with its label and count", () => {
+    render(<FilterSidebar sections={[brandSection()]} />);
+
+    expect(screen.getByRole("checkbox", { name: /Sony/ })).toBeInTheDocument();
+    expect(screen.getByText("3")).toBeInTheDocument();
+    expect(
+      screen.getByRole("checkbox", { name: /Fujifilm/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("calls onChange with the value added when an unchecked option is clicked", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(
+      <FilterSidebar
+        sections={[brandSection({ selected: ["sony"], onChange })]}
+      />,
+    );
+
+    await user.click(screen.getByRole("checkbox", { name: /Fujifilm/ }));
+
+    expect(onChange).toHaveBeenCalledWith(["sony", "fujifilm"]);
+  });
+
+  it("calls onChange with the value removed when a checked option is clicked", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(
+      <FilterSidebar
+        sections={[brandSection({ selected: ["sony", "fujifilm"], onChange })]}
+      />,
+    );
+
+    await user.click(screen.getByRole("checkbox", { name: /Sony/ }));
+
+    expect(onChange).toHaveBeenCalledWith(["fujifilm"]);
+  });
+
+  it("disables a zero-count option that isn't selected", () => {
+    render(<FilterSidebar sections={[brandSection()]} />);
+
+    expect(screen.getByRole("checkbox", { name: /Canon/ })).toBeDisabled();
+  });
+
+  it("keeps a zero-count option enabled if it's already selected", () => {
+    render(
+      <FilterSidebar sections={[brandSection({ selected: ["canon"] })]} />,
+    );
+
+    expect(screen.getByRole("checkbox", { name: /Canon/ })).toBeEnabled();
+  });
+
+  it("renders a range section's current value and slider bounds", () => {
+    render(<FilterSidebar sections={[resolutionSection()]} />);
+
+    expect(screen.getByText("24 MP")).toBeInTheDocument();
+    expect(screen.getByText("12 MP")).toBeInTheDocument();
+    expect(screen.getByText("60 MP")).toBeInTheDocument();
+    expect(
+      screen.getByRole("slider", { name: "Minimum resolution" }),
+    ).toBeInTheDocument();
+  });
+
+  it("labels each thumb of a two-sided range independently", () => {
+    render(
+      <FilterSidebar
+        sections={[
+          resolutionSection({
+            id: "focal-length",
+            label: "Focal length",
+            value: [24, 70],
+            thumbLabels: ["Minimum focal length", "Maximum focal length"],
+            formatValue: (value) => `${value}mm`,
+          }),
+        ]}
+      />,
+    );
+
+    expect(screen.getByText("24mm – 70mm")).toBeInTheDocument();
+    expect(
+      screen.getByRole("slider", { name: "Minimum focal length" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("slider", { name: "Maximum focal length" }),
+    ).toBeInTheDocument();
+  });
+
+  it("prefixes checkbox ids so two instances can render at once without collisions", () => {
+    render(<FilterSidebar sections={[brandSection()]} idPrefix="mobile-" />);
+
+    expect(screen.getByRole("checkbox", { name: /Sony/ })).toHaveAttribute(
+      "id",
+      "mobile-brand-sony",
+    );
+  });
+});
