@@ -86,19 +86,19 @@ even before you touch a checkbox.
 
 **`/lenses` parameters:**
 
-| Parameter                 | Format                                                               | Example                     |
-| ------------------------- | -------------------------------------------------------------------- | --------------------------- |
-| `brand`                   | comma-separated list                                                 | `brand=Sony`                |
-| `mount`                   | comma-separated `MountId`                                            | `mount=sony-e`              |
-| `focal_type`              | `prime` or `zoom`                                                    | `focal_type=prime`          |
-| `min_focal` / `max_focal` | number, mm — matches any lens whose focal range overlaps this window | `min_focal=24&max_focal=70` |
-| `max_aperture`            | number (f-number, lower = faster)                                    | `max_aperture=2.8`          |
+| Parameter                 | Format                                                       | Example                     |
+| ------------------------- | ------------------------------------------------------------ | --------------------------- |
+| `brand`                   | comma-separated list                                         | `brand=Sony`                |
+| `mount`                   | comma-separated `MountId`                                    | `mount=sony-e`              |
+| `focal_type`              | `prime` or `zoom`                                            | `focal_type=prime`          |
+| `min_focal` / `max_focal` | number, mm (matches a lens whose range overlaps this window) | `min_focal=24&max_focal=70` |
+| `max_aperture`            | number (f-number, lower = faster)                            | `max_aperture=2.8`          |
 
-Any parameter can be omitted or combined freely with the others; an
-unset or invalid value is treated as "no filter" rather than an error.
-See `lib/catalog-params.ts` for the parsing/serialization rules, and
+You can omit any parameter, or combine several freely. The app treats
+an unset or invalid value as "no filter," not as an error. See
+`lib/catalog-params.ts` for the parsing and serialization rules. See
 `ARCHITECTURE.md`'s "Catalog browse pages" section for how filter state
-flows from the URL down to the SQL query.
+flows from the URL to the SQL query.
 
 ## Learn More
 
