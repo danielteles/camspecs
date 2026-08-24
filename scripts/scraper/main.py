@@ -332,7 +332,14 @@ async def run_pipeline(args: argparse.Namespace) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run the full camspecs scraper pipeline.")
     parser.add_argument(
-        "--wikidata-limit", type=int, default=25, help="Max entities per type from Wikidata"
+        "--wikidata-limit",
+        type=int,
+        default=25,
+        help=(
+            "Entity budget per type from Wikidata, split evenly across mounts so a "
+            "low-cadence mount (e.g. Fujifilm G) isn't crowded out of its share by a "
+            "high-cadence one (see extractors/wikidata.py's _per_mount_limit)"
+        ),
     )
     parser.add_argument(
         "--nikon-urls",

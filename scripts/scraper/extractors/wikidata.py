@@ -67,16 +67,48 @@ _QID_TO_MOUNT_ID = {qid: mount_id for mount_id, qid in MOUNT_QIDS.items()}
 _UNRESOLVED_LABEL = re.compile(r"^Q\d+$")
 
 
-def _mount_values_clause() -> str:
-    return " ".join(f"wd:{qid}" for qid in MOUNT_QIDS.values())
+# A single global query (one shared LIMIT across every mount, ORDER BY
+# DESC(?date)) starves out low-release-cadence mounts — verified live:
+# Sony E's sheer lens catalog volume alone fills the *entire* LIMIT 25
+# result set (24 Sony E + 1 Nikon Z), so Fujifilm G (GFX) never gets a
+# single lens at any tested limit up to 25; on the camera side G-mount
+# fares a little better (Sony E/Canon RF crowd it out below limit 15, and
+# it only reaches its full 2-item ceiling at limit >= 25) but that's a
+# coincidence of today's relative release cadences, not a guarantee — nothing
+# stops a future high-cadence mount from pushing G-mount back out. Querying
+# each mount separately with its own LIMIT, instead of pooling every mount
+# into one shared ranked list, fixes this structurally: a low-cadence
+# mount's results can never be pushed out by a high-cadence mount's, because
+# they're never competing for the same LIMIT slots to begin with.
+_MIN_ENTITIES_PER_MOUNT = 3
 
 
-def build_camera_sparql(limit: int) -> str:
+def _per_mount_limit(total_limit: int) -> int:
+    """Splits one global entity limit into an even per-mount share.
+
+    Floors at `_MIN_ENTITIES_PER_MOUNT` so a low `--wikidata-limit` (e.g. a
+    quick scoped test run) can't round a low-cadence mount's share down to
+    zero the same way pooling everything into one shared LIMIT already did
+    (see the module-level note above `_MIN_ENTITIES_PER_MOUNT`) — 3 was
+    picked as enough to consistently surface at least one item per mount
+    after client-side validation drops (`_map_camera_binding`/
+    `_map_lens_binding` reject unresolved labels or missing required
+    fields), without the total pull ballooning far past today's single-query
+    default (7 mounts x 3 = 21, versus the previous flat 25).
+    """
+    return max(_MIN_ENTITIES_PER_MOUNT, total_limit // len(MOUNT_QIDS))
+
+
+def build_camera_sparql(limit: int, mount_qid: str) -> str:
     # Ordering by release date (falling back to announce date) so the LIMIT
     # cutoff keeps the newest cameras rather than an arbitrary slice —
     # otherwise Wikidata's query planner tends to surface old, low-QID items
     # first (early-2000s DSLRs), crowding out the current mirrorless bodies
-    # this site actually covers.
+    # this site actually covers. Scoped to one mount per call (see
+    # `_per_mount_limit`'s docstring) rather than the VALUES-list-of-all-
+    # mounts shape this query used before — `?mount` is bound directly
+    # instead of joined, since the caller already knows which mount it's
+    # asking for.
     #
     # P2935|P527 (property path alternation): verified live that most GFX
     # (Fujifilm G-mount) camera items don't use P2935 ("connector") for
@@ -94,8 +126,8 @@ def build_camera_sparql(limit: int) -> str:
 SELECT ?item ?itemLabel ?manufacturerLabel ?mount ?mountLabel ?mass ?pubDate ?announceDate WHERE {{
   ?item wdt:P31 wd:{CAMERA_MODEL_QID};
         wdt:P176 ?manufacturer;
-        (wdt:P2935|wdt:P527) ?mount.
-  VALUES ?mount {{ {_mount_values_clause()} }}
+        (wdt:P2935|wdt:P527) wd:{mount_qid}.
+  BIND(wd:{mount_qid} AS ?mount)
   OPTIONAL {{ ?item wdt:P2067 ?mass. }}
   OPTIONAL {{ ?item wdt:P577 ?pubDate. }}
   OPTIONAL {{ ?item wdt:P6949 ?announceDate. }}
@@ -107,7 +139,7 @@ LIMIT {limit}
 """.strip()
 
 
-def build_lens_sparql(limit: int) -> str:
+def build_lens_sparql(limit: int, mount_qid: str) -> str:
     # Focal length (P2151) and aperture (P7863) are multi-valued for zoom
     # lenses (e.g. wide/tele focal length, wide-open/stopped-down aperture).
     # A subquery aggregates MIN/MAX per item *before* joining labels, since
@@ -115,7 +147,10 @@ def build_lens_sparql(limit: int) -> str:
     # doesn't reliably group the label variables. The subquery has no LIMIT
     # of its own — mount-filtering and recency-ordering happen in the outer
     # scope, so a limit here would truncate candidates before either applies
-    # (verified live: the unlimited aggregation still completes in ~1s).
+    # (verified live: the unlimited aggregation still completes in ~1s, and
+    # is shared across every mount's query since it doesn't depend on
+    # ?mount at all). Scoped to one mount per call — see
+    # `build_camera_sparql`'s docstring for why.
     return f"""
 SELECT ?item ?itemLabel ?manufacturerLabel ?mount ?mountLabel
        ?minFocalLength ?maxFocalLength ?minAperture ?maxAperture
@@ -131,8 +166,8 @@ SELECT ?item ?itemLabel ?manufacturerLabel ?mount ?mountLabel
     GROUP BY ?item
   }}
   ?item wdt:P176 ?manufacturer;
-        wdt:P2935 ?mount.
-  VALUES ?mount {{ {_mount_values_clause()} }}
+        wdt:P2935 wd:{mount_qid}.
+  BIND(wd:{mount_qid} AS ?mount)
   OPTIONAL {{ ?item wdt:P2067 ?mass. }}
   OPTIONAL {{ ?item wdt:P577 ?pubDate. }}
   OPTIONAL {{ ?item wdt:P6949 ?announceDate. }}
@@ -328,8 +363,23 @@ def _map_lens_binding(binding: dict[str, Any]) -> dict[str, Any] | None:
 
 
 async def fetch_cameras(client: httpx.AsyncClient, limit: int = 25) -> list[CameraSpecs]:
-    payload = await _execute_sparql(client, build_camera_sparql(limit))
-    bindings = payload["results"]["bindings"]
+    """Fetches cameras for every supported mount, one query per mount.
+
+    `limit` is the same overall budget the CLI's `--wikidata-limit` has
+    always documented — see `_per_mount_limit` for how it's split so a
+    low-cadence mount (Fujifilm G) can't be crowded out of its share by a
+    high-cadence one (Sony E, Canon RF) the way a single pooled query would.
+    Queries run concurrently so partitioning by mount doesn't multiply this
+    function's wall-clock time by `len(MOUNT_QIDS)`.
+    """
+    per_mount_limit = _per_mount_limit(limit)
+    payloads = await asyncio.gather(
+        *(
+            _execute_sparql(client, build_camera_sparql(per_mount_limit, mount_qid))
+            for mount_qid in MOUNT_QIDS.values()
+        )
+    )
+    bindings = [binding for payload in payloads for binding in payload["results"]["bindings"]]
 
     results: list[CameraSpecs] = []
     seen_qids: set[str] = set()
@@ -355,8 +405,22 @@ async def fetch_cameras(client: httpx.AsyncClient, limit: int = 25) -> list[Came
 
 
 async def fetch_lenses(client: httpx.AsyncClient, limit: int = 25) -> list[LensSpecs]:
-    payload = await _execute_sparql(client, build_lens_sparql(limit))
-    bindings = payload["results"]["bindings"]
+    """Fetches lenses for every supported mount, one query per mount.
+
+    Same per-mount partitioning as `fetch_cameras` — see its docstring and
+    `_per_mount_limit`. The lens side is where this matters most: verified
+    live, Sony E's lens catalog alone fills every slot of the old shared-
+    LIMIT-25 query, so Fujifilm G (GF) got zero lenses at any tested limit
+    under the previous single-query design.
+    """
+    per_mount_limit = _per_mount_limit(limit)
+    payloads = await asyncio.gather(
+        *(
+            _execute_sparql(client, build_lens_sparql(per_mount_limit, mount_qid))
+            for mount_qid in MOUNT_QIDS.values()
+        )
+    )
+    bindings = [binding for payload in payloads for binding in payload["results"]["bindings"]]
 
     results: list[LensSpecs] = []
     seen_qids: set[str] = set()
@@ -426,7 +490,12 @@ async def _run(entity_type: str, limit: int) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Fetch camera/lens specs from Wikidata via SPARQL.")
     parser.add_argument("--type", choices=["camera", "lens", "both"], default="both")
-    parser.add_argument("--limit", type=int, default=25, help="Max entities to fetch per type")
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=25,
+        help="Entity budget per type, split evenly across mounts (see _per_mount_limit)",
+    )
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
