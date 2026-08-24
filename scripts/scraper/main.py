@@ -166,6 +166,12 @@ class Timer:
         logger.info("<- %s (%s) in %.2fs", self.label, status, self.elapsed)
 
 
+def _merge_unique(curated: list[str], discovered: list[str]) -> list[str]:
+    """Curated slugs first (so the QID backfill maps above still line up by value), then any newly discovered slug not already covered."""
+    seen = set(curated)
+    return curated + [slug for slug in discovered if slug not in seen]
+
+
 async def fetch_all(
     wikidata_limit: int,
     nikon_urls: list[str],
@@ -257,9 +263,22 @@ async def revalidate_site(
 async def run_pipeline(args: argparse.Namespace) -> None:
     pipeline_start = time.perf_counter()
 
+    versus_camera_slugs = args.versus_camera_slugs
+    versus_lens_slugs = args.versus_lens_slugs
+    if args.discover_versus_slugs:
+        with Timer("Discover Versus slugs"):
+            discovered_cameras, discovered_lenses = await versus.discover_all_slugs()
+        versus_camera_slugs = _merge_unique(versus_camera_slugs, discovered_cameras)
+        versus_lens_slugs = _merge_unique(versus_lens_slugs, discovered_lenses)
+        logger.info(
+            "Discovery added %d camera slug(s), %d lens slug(s) to the curated defaults",
+            len(versus_camera_slugs) - len(args.versus_camera_slugs),
+            len(versus_lens_slugs) - len(args.versus_lens_slugs),
+        )
+
     with Timer("Fetch") as t_fetch:
         raw_cameras, raw_lenses = await fetch_all(
-            args.wikidata_limit, args.nikon_urls, args.versus_camera_slugs, args.versus_lens_slugs
+            args.wikidata_limit, args.nikon_urls, versus_camera_slugs, versus_lens_slugs
         )
     logger.info(
         "Fetched %d raw camera record(s), %d raw lens record(s)", len(raw_cameras), len(raw_lenses)
@@ -358,6 +377,12 @@ def main() -> None:
         nargs="*",
         default=DEFAULT_VERSUS_LENS_SLUGS,
         help="Versus.com 'camera + lens' kit slugs to scrape for their lens half",
+    )
+    parser.add_argument(
+        "--discover-versus-slugs",
+        action="store_true",
+        help="Crawl versus.com/en/camera and /en/camera-lens for additional slugs, merged with "
+        "--versus-camera-slugs / --versus-lens-slugs before fetching",
     )
     parser.add_argument(
         "--site-url",
