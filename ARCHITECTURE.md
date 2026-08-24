@@ -94,6 +94,13 @@ browser API.
   upsert, normally clears a changed page's cache well before this
   window would.
 
+- The catalog browse pages, `/cameras` and `/lenses`, used to be static
+  for the same reason the product pages are. They are not anymore.
+  Reading `searchParams` to support faceted filtering (see "Catalog
+  browse pages" below) makes a page dynamic — server-rendered per
+  request — by definition, so the `revalidate` export that used to sit on
+  these two pages is gone. There is no static HTML left to revalidate.
+
 ## Internationalization
 
 next-intl handles routing, for example `/en/...`, `/pt-BR/...`, and
@@ -191,6 +198,26 @@ or a missing required field is skipped, with a logged reason, instead of
 reaching a page with a fake default value. This is the third enforcement
 point in README.md's "Architecture: supported mounts" section.
 
+The same file also exposes `getFilteredCameras`/`getFilteredLenses` and
+the query builders behind them, `buildCamerasQuery`/`buildLensesQuery`.
+Each builder takes a plain `CameraFilters`/`LensFilters` object and
+chains Kysely `.where()` calls onto a `SELECT`, one call per set filter,
+so every filter combination compiles to a single parameterized query
+instead of N round trips or an in-memory scan. `getAllCameras`/
+`getAllLenses` are themselves just the filtered variant called with no
+filters — one code path, not two. Sort keys go through a fixed
+`Record<SortKey, Column>` lookup rather than a raw column name, so a
+sort parameter can never reach `ORDER BY` as arbitrary SQL.
+
+These builders are unit-tested by compiling them against a real
+Postgres SQL compiler with no live connection: `test/kysely-test-db.ts`
+builds a Kysely instance from `PostgresAdapter`/`PostgresIntrospector`/
+`PostgresQueryCompiler` plus a `DummyDriver`, so `.compile()` produces
+the exact SQL and bound parameters a real query would, without opening a
+socket. This project has no test-database container, so this is the
+whole story for "does the WHERE clause do what I think it does" —
+deliberately, rather than an omission; see `lib/services/equipment.test.ts`.
+
 A lens has no sensor of its own. `getNativeCameraForLens`, in
 `lib/compare-data.ts`, finds a camera in the catalog with the same mount,
 and uses that camera's crop factor for the lens's 35mm-equivalent specs.
@@ -243,17 +270,82 @@ surfaces directly to a reader.
 ## Catalog browse pages
 
 `/cameras` and `/lenses` (`app/[locale]/cameras/page.tsx` and
-`app/[locale]/lenses/page.tsx`) list the full catalog. Each page is a
-Server Component. It calls `getAllCameras` or `getAllLenses` once, then
-passes the array to a Client Component, `CamerasCatalog` or
-`LensesCatalog`.
+`app/[locale]/lenses/page.tsx`) support faceted filtering — brand,
+sensor format, mount, resolution, and weight for cameras; brand, mount,
+prime/zoom, focal length, and max aperture for lenses — with every
+filter's state living in the URL query string (see README.md's "Catalog
+filtering" for the exact parameter schema). The design splits cleanly
+along one line: **the server owns which items match; the client owns
+which options to show and how many of each.**
 
-The Client Component holds the search text and a facet filter (sensor
-format for cameras, mount for lenses) in local state, and filters the
-already-fetched array in memory with `useMemo`. There is no `/api/search`
-round trip on this page. A user reaches a product page from a card built
-by the shared `CatalogItemCard` component, or adds the item to a
-comparison directly from the same card.
+- Each page is a Server Component. It reads `searchParams`, parses it
+  into a `CameraFilters`/`LensFilters` object with `lib/catalog-params.ts`,
+  and passes that straight to `getFilteredCameras`/`getFilteredLenses` —
+  the results a visitor sees are a real SQL `WHERE` clause's output, not
+  a client-side filter over a fetched array. The page also fetches the
+  _unfiltered_ catalog once, in parallel, and passes both arrays down to
+  a Client Component, `CamerasCatalog` or `LensesCatalog`.
+
+- The Client Component never re-implements the SQL filter to decide what
+  to render — the `cameras`/`lenses` prop it got is already the answer.
+  What it does compute, client-side, from the unfiltered array: each
+  facet's available options and their counts. `lib/catalog-filtering.ts`
+  holds `cameraMatchesFilters`/`lensMatchesFilters`, a plain-TypeScript
+  mirror of the SQL builders' WHERE semantics, and `countByFacet`, which
+  counts items per facet value **as if every filter except that facet
+  still applied**. This is the standard faceted-search rule: filtering
+  to Sony still shows "Fujifilm (5)" as an available next click, not a
+  disabled zero, because the Fujifilm count excludes only the brand
+  filter, not the others. Getting this rule wrong is the most common way
+  a faceted filter UI feels broken, so it has its own dedicated test
+  file (`lib/catalog-filtering.test.ts`) independent of any component.
+
+- The two arrays exist because the alternative — computing counts from
+  the already-filtered set — can't answer "what would happen if I added
+  this filter," only "what's true of what I already see." The catalogs
+  here are small (tens to low hundreds of rows), so shipping the full
+  array to the client for this purpose is a deliberate, cheap trade;
+  see "Known limitations" for what changes if that stops being true.
+
+- Filter state flows through `useSearchParams()` (read) and
+  `router.replace({ pathname, query }, { scroll: false })` (write, via
+  `@/i18n/navigation`, the same pattern `CompareSelector` already used —
+  see "Internationalization" above for why the query object can't include
+  an explicit `undefined`). The `router.replace` call is wrapped in
+  `startTransition`, so `isPending` can dim the results grid while the
+  server round-trip for the new `searchParams` is in flight — the facet
+  panel itself updates immediately, since its counts come from the
+  client-held unfiltered array, not from that round trip.
+
+- A range slider (`<FilterSidebar />`'s `"range"` section, backed by
+  Radix `Slider`) encodes "no filter" as sitting at the dataset's own
+  bound — minimum resolution at the catalog's lowest megapixel count,
+  maximum weight at its highest gram count, and so on — and each
+  `onChange` handler compares the new value against that bound before
+  writing to the URL, converting a value that lands back on it to
+  `undefined` rather than a literal, redundant filter. Without this, the
+  first drag of any slider would always add a URL parameter and an
+  active-filter badge, even one that changes nothing.
+
+- `FilterSidebar`, `MobileFilterDrawer`, and `ActiveFilterBadges`
+  (`components/`) are presentational: every string they render is a
+  prop, and neither calls `useTranslations` itself. `CamerasCatalog`/
+  `LensesCatalog` are the only place that resolves i18n keys and turns
+  filter state into the section/chip configs these components take.
+  This keeps the same three components usable, unchanged, for the
+  cameras and lenses catalogs even though the two have almost no facets
+  in common.
+
+- The free-text search box layers on top of the server-filtered array,
+  client-side only, the same way it always has — it was never part of
+  the URL-driven filter set this step added, and adding it would mean
+  either a debounced `ILIKE` round trip per keystroke or reintroducing a
+  second, parallel client-side filtering path. Out of scope for now; see
+  "Known limitations".
+
+A user reaches a product page from a card built by the shared
+`CatalogItemCard` component, or adds the item to a comparison directly
+from the same card, same as before this feature existed.
 
 ## Scraper pipeline
 
@@ -404,12 +496,16 @@ them:
 ## Testing
 
 Vitest covers two layers. Pure logic — the math engine, row-building,
-search and URL-parameter parsing, and FoV geometry — has plain unit
-tests. Eight components — the two catalog browse grids, the catalog item
-card, the compare selector, the compare-page swap-and-copy actions, the
-navbar, the footer, and the last-updated badge — have React Testing
-Library tests, run in a `jsdom` environment (`vitest.config.mts`). The
-project has 122 tests, across 13 files, at last count.
+search and URL-parameter parsing, FoV geometry, the catalog SQL query
+builders (compiled against a real Postgres compiler with no live
+connection — see "Data layer" above), and the faceted-search filter/count
+rules — has plain unit tests. Eleven components — the two catalog browse
+grids, the catalog item card, the compare selector, the compare-page
+swap-and-copy actions, the navbar, the footer, the last-updated badge,
+and the three filter components (`FilterSidebar`, `MobileFilterDrawer`,
+`ActiveFilterBadges`) — have React Testing Library tests, run in a
+`jsdom` environment (`vitest.config.mts`). The project has 196 tests,
+across 19 files, at last count.
 
 Three interactive pieces still have no automated coverage: the diff
 toggle, the field-of-view slider, and locale switching that keeps the
@@ -463,3 +559,18 @@ open:
   remove it once the catalog and product pages read through the same
   functions in normal page loads. They now do, so this endpoint is safe
   to delete.
+- Faceted filter option counts (see "Catalog browse pages" above) are
+  computed client-side against the full, unfiltered catalog fetched
+  alongside the filtered results. That's a deliberate trade for
+  catalogs this size — tens to low hundreds of rows — not an oversight,
+  but it stops being a good one well before the catalog reaches
+  thousands of rows. At that point the counts need to move to a real
+  aggregate query (`GROUP BY` per facet, filtered by every other active
+  facet) instead of a second array shipped to the browser.
+- The free-text search box on `/cameras` and `/lenses` still filters
+  client-side only, on top of the server-filtered results, and isn't
+  part of the URL-driven filter state the other facets got. It was
+  already client-side before faceted filtering existed, and folding it
+  in would mean either a debounced query round trip per keystroke or a
+  second in-memory filtering path running alongside the SQL one — both
+  real options, neither implemented yet.
