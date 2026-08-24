@@ -25,7 +25,15 @@ class CameraSpecs(BaseModel):
     slug: str | None = None
     brand: str
     model: str
-    mount: str
+    # Optional rather than required: a fixed-lens camera genuinely has none,
+    # and some Versus pages omit the spec row even for a real
+    # interchangeable-lens body (see `extractors/curated_fallbacks.py`'s
+    # VERSUS_SLUG_MOUNT_OVERRIDES). Either way a missing mount is real data,
+    # not a malformed record — `main.py`'s `_drop_unsupported_mounts` is what
+    # actually excludes a still-null mount from the final catalog, after
+    # `transformers/merger.py`'s `apply_curated_mount_overrides` and
+    # cross-source backfill both get a chance to resolve it.
+    mount: str | None = None
     sensor_format: SensorFormat
     sensor: SensorDimensions | None = None
     megapixels: float | None = Field(default=None, gt=0)
@@ -40,7 +48,7 @@ class CameraSpecs(BaseModel):
 
     @field_validator("mount", mode="before")
     @classmethod
-    def _normalize_mount(cls, value: str) -> str:
+    def _normalize_mount(cls, value: str | None) -> str | None:
         return normalize_mount(value)
 
     @field_validator("sensor_format", mode="before")

@@ -15,6 +15,7 @@ import time
 
 import httpx
 from dotenv import load_dotenv
+from pydantic import ValidationError
 
 from db.connection import dispose_engine, get_engine, get_session_factory
 from db.schema import create_all
@@ -23,6 +24,7 @@ from extractors import nikon, versus, wikidata
 from models import CameraSpecs, LensSpecs
 from transformers.merger import (
     apply_curated_lens_release_years,
+    apply_curated_mount_overrides,
     apply_curated_sensor_format_overrides,
     drop_unmergeable_wikidata_cameras,
     merge_records,
@@ -247,6 +249,15 @@ async def fetch_all(
     for slug in versus_camera_slugs:
         try:
             cameras.append(await versus.fetch_camera(slug))
+        except ValidationError:
+            # Distinct from the generic except below: the page fetched fine,
+            # but the scraped data didn't pass schema validation (e.g. a
+            # required field came back empty). Worth its own log line since
+            # it means real data loss from a schema/scraping gap, not a
+            # transient WAF/network hiccup — see transformers/merger.py's
+            # apply_curated_mount_overrides for the fix pattern this should
+            # prompt if it recurs for the same slug.
+            logger.exception("Skipping Versus camera slug: failed schema validation: %s", slug)
         except Exception:
             # Same reasoning as the Nikon loop above — a WAF challenge that
             # didn't resolve or a page-layout change for one slug shouldn't
@@ -256,6 +267,9 @@ async def fetch_all(
     for slug in versus_lens_slugs:
         try:
             lens = await versus.fetch_lens(slug)
+        except ValidationError:
+            logger.exception("Skipping Versus lens slug: failed schema validation: %s", slug)
+            continue
         except Exception:
             logger.exception("Skipping Versus lens slug after repeated failures: %s", slug)
             continue
@@ -319,6 +333,10 @@ async def run_pipeline(args: argparse.Namespace) -> None:
     logger.info(
         "Fetched %d raw camera record(s), %d raw lens record(s)", len(raw_cameras), len(raw_lenses)
     )
+    # Must run before _drop_unsupported_mounts: a still-null mount is
+    # indistinguishable from a genuinely unsupported one to that filter, so
+    # any camera this could rescue needs its mount resolved first.
+    raw_cameras = apply_curated_mount_overrides(raw_cameras)
     raw_cameras, raw_lenses = _drop_unsupported_mounts(raw_cameras, raw_lenses)
 
     with Timer("Merge") as t_merge:

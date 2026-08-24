@@ -15,7 +15,11 @@ from typing import TypeVar
 
 from pydantic import BaseModel
 
-from extractors.curated_fallbacks import LENS_KIT_RELEASE_YEARS, MOUNT_SENSOR_FORMATS
+from extractors.curated_fallbacks import (
+    LENS_KIT_RELEASE_YEARS,
+    MOUNT_SENSOR_FORMATS,
+    VERSUS_SLUG_MOUNT_OVERRIDES,
+)
 from models.camera import CameraSpecs
 from models.enums import SensorFormat
 from models.lens import LensSpecs
@@ -158,10 +162,42 @@ def apply_curated_sensor_format_overrides(cameras: list[CameraSpecs]) -> list[Ca
     return cameras
 
 
-def _versus_kit_slug(source_url: object) -> str | None:
+def _versus_slug_from_source_url(source_url: object) -> str | None:
+    """Recover the Versus product slug from a record's `source_url`.
+
+    Works for both a plain camera page (`.../en/{slug}`) and a "camera +
+    lens" kit page (`.../en/{camera-slug}-{lens-slug}`) — either way the
+    slug is just the URL's last path segment (see `extractors/versus.py`'s
+    `BASE_URL`).
+    """
     if source_url is None:
         return None
     return str(source_url).rstrip("/").rsplit("/", 1)[-1]
+
+
+def apply_curated_mount_overrides(cameras: list[CameraSpecs]) -> list[CameraSpecs]:
+    """Backfill `mount` for the Versus slugs with a confirmed per-page scraping gap.
+
+    See `extractors.curated_fallbacks.VERSUS_SLUG_MOUNT_OVERRIDES` for which
+    slugs and why: each is a real interchangeable-lens camera whose Versus
+    page omits the `lens-mount` spec row outright, so nothing upstream of
+    this ever has a value to backfill from. Must run before `merge_records`
+    (unlike the sensor-format/release-year overrides below, which run after)
+    — `merge_key` groups records by mount, so a still-null mount here would
+    both dodge deduplication against a same-camera Wikidata record and get
+    dropped by `main.py`'s `_drop_unsupported_mounts` before this function
+    ever got a chance to run on the merged result.
+    """
+    for camera in cameras:
+        if camera.mount is not None:
+            continue
+        slug = _versus_slug_from_source_url(camera.source_url)
+        if slug is None:
+            continue
+        override = VERSUS_SLUG_MOUNT_OVERRIDES.get(slug)
+        if override is not None:
+            camera.mount = override
+    return cameras
 
 
 def apply_curated_lens_release_years(lenses: list[LensSpecs]) -> list[LensSpecs]:
@@ -183,7 +219,7 @@ def apply_curated_lens_release_years(lenses: list[LensSpecs]) -> list[LensSpecs]
     for lens in lenses:
         if lens.release_year is not None:
             continue
-        slug = _versus_kit_slug(lens.source_url)
+        slug = _versus_slug_from_source_url(lens.source_url)
         if slug is None:
             continue
         override = LENS_KIT_RELEASE_YEARS.get(slug)

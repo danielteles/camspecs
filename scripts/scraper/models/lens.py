@@ -17,7 +17,10 @@ class LensSpecs(BaseModel):
     slug: str | None = None
     brand: str
     model: str
-    mount: str
+    # Optional for the same reason as CameraSpecs.mount (see models/camera.py)
+    # — some Versus lens pages omit the spec row even for a real
+    # interchangeable-lens product.
+    mount: str | None = None
     min_focal_length_mm: float = Field(gt=0)
     max_focal_length_mm: float = Field(gt=0)
     min_aperture: float = Field(gt=0)
@@ -32,7 +35,7 @@ class LensSpecs(BaseModel):
 
     @field_validator("mount", mode="before")
     @classmethod
-    def _normalize_mount(cls, value: str) -> str:
+    def _normalize_mount(cls, value: str | None) -> str | None:
         return normalize_mount(value)
 
     @field_validator(

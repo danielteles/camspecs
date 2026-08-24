@@ -77,8 +77,18 @@ _MOUNT_ALIASES: dict[str, str] = {
 _MOUNT_ALIAS_KEY_PATTERN = re.compile(r"[\s_-]+")
 
 
-def normalize_mount(value: str) -> str:
-    """Normalize a mount name (e.g. "Sony E-mount") into a stable slug ("sony-e")."""
+def normalize_mount(value: str | None) -> str | None:
+    """Normalize a mount name (e.g. "Sony E-mount") into a stable slug ("sony-e").
+
+    `None` passes through unchanged rather than raising. A missing mount is a
+    real, common outcome (fixed-lens cameras have no interchangeable mount at
+    all, and some Versus pages omit the spec row even for genuine
+    interchangeable-lens bodies — see `extractors/curated_fallbacks.py`'s
+    `VERSUS_SLUG_MOUNT_OVERRIDES`), not a malformed-input error the caller
+    should have prevented.
+    """
+    if value is None:
+        return None
     alias_key = _MOUNT_ALIAS_KEY_PATTERN.sub(" ", value.strip().lower()).strip()
     if alias_key in _MOUNT_ALIASES:
         return _MOUNT_ALIASES[alias_key]
