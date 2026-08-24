@@ -39,14 +39,24 @@ if (typeof window.matchMedia === "undefined") {
 if (!Element.prototype.scrollIntoView) {
   Element.prototype.scrollIntoView = vi.fn();
 }
-if (!Element.prototype.hasPointerCapture) {
-  Element.prototype.hasPointerCapture = vi.fn().mockReturnValue(false);
-}
-if (!Element.prototype.releasePointerCapture) {
-  Element.prototype.releasePointerCapture = vi.fn();
-}
+// Stateful, so hasPointerCapture reflects real capture/release calls instead
+// of always returning false — radix-ui's Slider gates pointermove/pointerup
+// handling on hasPointerCapture, so a dumb false-returning stub would make
+// every simulated drag in tests silently no-op.
 if (!Element.prototype.setPointerCapture) {
-  Element.prototype.setPointerCapture = vi.fn();
+  const capturedPointerIds = new WeakMap<Element, Set<number>>();
+  Element.prototype.hasPointerCapture = function (pointerId: number) {
+    return capturedPointerIds.get(this)?.has(pointerId) ?? false;
+  };
+  Element.prototype.setPointerCapture = function (pointerId: number) {
+    if (!capturedPointerIds.has(this)) {
+      capturedPointerIds.set(this, new Set());
+    }
+    capturedPointerIds.get(this)!.add(pointerId);
+  };
+  Element.prototype.releasePointerCapture = function (pointerId: number) {
+    capturedPointerIds.get(this)?.delete(pointerId);
+  };
 }
 
 // next-intl client hooks: resolve real strings from messages/en.json so

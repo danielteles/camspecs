@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import {
   Accordion,
   AccordionContent,
@@ -123,10 +125,17 @@ function CheckboxSection({
 
 function RangeSection({ section }: { section: RangeFilterSection }) {
   const format = section.formatValue ?? String;
+  const [liveValue, setLiveValue] = useState(section.value);
+  const [prevSectionValue, setPrevSectionValue] = useState(section.value);
+  if (section.value !== prevSectionValue) {
+    setPrevSectionValue(section.value);
+    setLiveValue(section.value);
+  }
+
   const currentLabel =
-    section.value.length === 2
-      ? `${format(section.value[0]!)} – ${format(section.value[1]!)}`
-      : format(section.value[0]!);
+    liveValue.length === 2
+      ? `${format(liveValue[0]!)} – ${format(liveValue[1]!)}`
+      : format(liveValue[0]!);
 
   return (
     <div className="flex flex-col gap-3">
@@ -135,8 +144,9 @@ function RangeSection({ section }: { section: RangeFilterSection }) {
         min={section.min}
         max={section.max}
         step={section.step}
-        value={section.value}
-        onValueChange={section.onChange}
+        value={liveValue}
+        onValueChange={setLiveValue}
+        onValueCommit={section.onChange}
         thumbLabels={section.thumbLabels ?? [section.label]}
       />
       <div className="text-muted-foreground flex justify-between text-xs tabular-nums">

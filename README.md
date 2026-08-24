@@ -105,6 +105,18 @@ treats an unset or invalid value as "no filter," not as an error. See
 `ARCHITECTURE.md`'s "Catalog browse pages" section for how filter state
 flows from the URL to the SQL query.
 
+## Filter sliders
+
+Some filters use a range slider, for example minimum resolution or maximum
+weight. A range slider has a round handle that you can drag.
+
+The handle and the number above it move together while you drag. This
+update happens before you release the mouse button or lift your finger.
+
+When you release the slider, the app sends the new filter value to the
+server. This one request replaces many requests during a single drag. See
+`ARCHITECTURE.md`'s "Filter sliders" section for the technical detail.
+
 ## Loading feedback
 
 The catalog pages and the compare page show visual feedback while new

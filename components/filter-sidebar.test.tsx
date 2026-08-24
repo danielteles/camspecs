@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -41,6 +41,32 @@ function resolutionSection(
     formatValue: (value) => `${value} MP`,
     ...overrides,
   };
+}
+
+/**
+ * Radix's Slider computes the dragged value from the pointer position and
+ * the track's rect (getValueFromPointer), which jsdom reports as all zeros
+ * by default — so drag tests need a real width/left to compute against.
+ */
+function mockSliderRect(
+  element: HTMLElement,
+  { left = 0, width = 200 }: { left?: number; width?: number } = {},
+) {
+  vi.spyOn(element, "getBoundingClientRect").mockReturnValue({
+    left,
+    right: left + width,
+    width,
+    top: 0,
+    bottom: 20,
+    height: 20,
+    x: left,
+    y: 0,
+    toJSON: () => {},
+  });
+}
+
+function getSliderRoot() {
+  return document.querySelector('[data-slot="slider"]') as HTMLElement;
 }
 
 describe("FilterSidebar", () => {
@@ -138,6 +164,62 @@ describe("FilterSidebar", () => {
     expect(
       screen.getByRole("slider", { name: "Maximum focal length" }),
     ).toBeInTheDocument();
+  });
+
+  it("updates the displayed value and thumb position live while dragging, before pointer up", () => {
+    const onChange = vi.fn();
+    render(
+      <FilterSidebar
+        sections={[
+          resolutionSection({ min: 0, max: 100, value: [0], onChange }),
+        ]}
+      />,
+    );
+
+    const root = getSliderRoot();
+    mockSliderRect(root, { left: 0, width: 200 });
+
+    fireEvent.pointerDown(root, { pointerId: 1, button: 0, clientX: 0 });
+    fireEvent.pointerMove(root, { pointerId: 1, clientX: 100 });
+
+    // Live during the move — before pointer up — and not yet committed to
+    // the caller (that only happens once the drag ends).
+    expect(screen.getByText("50 MP")).toBeInTheDocument();
+    expect(
+      screen.getByRole("slider", { name: "Minimum resolution" }),
+    ).toHaveAttribute("aria-valuenow", "50");
+    expect(onChange).not.toHaveBeenCalled();
+
+    fireEvent.pointerUp(root, { pointerId: 1, clientX: 100 });
+
+    expect(onChange).toHaveBeenCalledExactlyOnceWith([50]);
+  });
+
+  it("keeps tracking every subsequent pointer move within the same drag", () => {
+    const onChange = vi.fn();
+    render(
+      <FilterSidebar
+        sections={[
+          resolutionSection({ min: 0, max: 100, value: [0], onChange }),
+        ]}
+      />,
+    );
+
+    const root = getSliderRoot();
+    mockSliderRect(root, { left: 0, width: 200 });
+
+    fireEvent.pointerDown(root, { pointerId: 1, button: 0, clientX: 0 });
+
+    fireEvent.pointerMove(root, { pointerId: 1, clientX: 40 });
+    expect(screen.getByText("20 MP")).toBeInTheDocument();
+
+    fireEvent.pointerMove(root, { pointerId: 1, clientX: 160 });
+    expect(screen.getByText("80 MP")).toBeInTheDocument();
+
+    expect(onChange).not.toHaveBeenCalled();
+
+    fireEvent.pointerUp(root, { pointerId: 1, clientX: 160 });
+    expect(onChange).toHaveBeenCalledExactlyOnceWith([80]);
   });
 
   it("prefixes checkbox ids so two instances can render at once without collisions", () => {
