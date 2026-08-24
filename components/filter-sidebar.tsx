@@ -95,8 +95,17 @@ function CheckboxSection({
                 isDisabled && "text-muted-foreground",
               )}
             >
-              <span>{option.label}</span>
-              <span className="text-muted-foreground text-xs tabular-nums">
+              <span>
+                {option.label}
+                {/* Screen readers otherwise concatenate the visible count
+                    onto the label with no separator (e.g. "Sony1"), since
+                    it's a sibling flex item rather than adjacent text. */}
+                <span className="sr-only">{`, ${option.count} available`}</span>
+              </span>
+              <span
+                aria-hidden="true"
+                className="text-muted-foreground text-xs tabular-nums"
+              >
                 {option.count}
               </span>
             </Label>

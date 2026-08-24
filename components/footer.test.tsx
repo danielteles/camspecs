@@ -19,6 +19,7 @@ const SONY_A7_IV: Camera = {
   sensor: { widthMm: 35.6, heightMm: 23.8 },
   megapixels: 33,
   releaseYear: 2021,
+  weightG: 658,
   updatedAt: new Date("2026-08-20T12:00:00Z"),
 };
 const CANON_R6_II: Camera = {
@@ -30,6 +31,7 @@ const CANON_R6_II: Camera = {
   sensor: { widthMm: 36.0, heightMm: 24.0 },
   megapixels: 24.2,
   releaseYear: 2022,
+  weightG: 670,
   updatedAt: new Date("2026-08-20T12:00:00Z"),
 };
 

@@ -79,6 +79,7 @@ function toCamera(row: Selectable<CamerasTable>): Camera | null {
     sensor: { widthMm: row.sensor_width_mm, heightMm: row.sensor_height_mm },
     megapixels: row.megapixels,
     releaseYear: row.release_year,
+    weightG: row.weight_g,
     updatedAt: row.updated_at,
   };
 }
@@ -106,6 +107,8 @@ function toLens(row: Selectable<LensesTable>): Lens | null {
     maxFocalLengthMm: row.max_focal_length_mm,
     maxAperture: row.max_aperture,
     minAperture: row.min_aperture,
+    weightG: row.weight_g,
+    isPrime: row.is_prime,
     releaseYear: row.release_year,
     updatedAt: row.updated_at,
   };

@@ -34,6 +34,8 @@ export interface Camera {
   sensor: SensorDimensions;
   megapixels: number;
   releaseYear: number;
+  /** Not scraped for every model; the weight filter treats null as "unknown, never matches". */
+  weightG: number | null;
   /** When the ETL scraper pipeline last synced this record's specs. */
   updatedAt: Date;
 }
@@ -47,6 +49,9 @@ export interface Lens {
   maxFocalLengthMm: number;
   maxAperture: number;
   minAperture: number;
+  /** Not scraped for every model; the weight filter treats null as "unknown, never matches". */
+  weightG: number | null;
+  isPrime: boolean;
   releaseYear: number;
   /** When the ETL scraper pipeline last synced this record's specs. */
   updatedAt: Date;
