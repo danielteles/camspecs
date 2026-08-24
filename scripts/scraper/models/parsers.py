@@ -165,6 +165,24 @@ def strip_redundant_brand_prefix(brand: str, model: str) -> str:
     return model
 
 
+# Versus writes an f-stop embedded in a lens model name as "f/5.6" (lowercase,
+# with the slash); Wikidata's labels write the same fact as "F5.6" (uppercase,
+# no slash) — confirmed live as the cause of 66 lens records and 1 camera
+# record duplicating in one production catalog, since `merge_key`
+# (transformers/merger.py) strips all punctuation and treats both spellings
+# as identical, but `slugify` below hyphenates around a "/" that "F5.6" never
+# had — so the same physical lens, fetched from both sources in separate
+# pipeline runs, gets two different slugs and two different upserted rows
+# instead of merging into one. Canonicalizing to Versus's "f/" form before
+# slug generation keeps the two sources from ever diverging on this again.
+_APERTURE_NOTATION_PATTERN = re.compile(r"\bF/?(?=\d)", re.IGNORECASE)
+
+
+def normalize_lens_model_text(model: str) -> str:
+    """Canonicalize embedded f-stop notation in a lens model name to "f/N"."""
+    return _APERTURE_NOTATION_PATTERN.sub("f/", model)
+
+
 def slugify(value: str) -> str:
     """Turn a display string into a URL-safe, lowercase, hyphenated slug."""
     text = unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode("ascii")

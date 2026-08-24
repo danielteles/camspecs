@@ -174,10 +174,10 @@ def main() -> None:
     assert lens_by_slug["nikon-nikkor-z-40mm-f-2-se-nikon-z"].release_year == 2022, (
         "a curated lens-kit slug must backfill its verified release_year"
     )
-    assert lens_by_slug["sony-fe-24-70mm-f2-8-gm-ii-sony-e"].release_year is None, (
+    assert lens_by_slug["sony-fe-24-70mm-f-2-8-gm-ii-sony-e"].release_year is None, (
         "a slug outside the curated dictionary must be left null, not guessed at"
     )
-    assert lens_by_slug["canon-rf-24-105mm-f4l-is-usm-canon-rf"].release_year == 2018, (
+    assert lens_by_slug["canon-rf-24-105mm-f-4l-is-usm-canon-rf"].release_year == 2018, (
         "an already-populated release_year must not be overwritten"
     )
     print("OK  lens release_year override assertions passed")

@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator, mod
 
 from .parsers import (
     normalize_brand,
+    normalize_lens_model_text,
     normalize_mount,
     parse_float,
     parse_weight_grams,
@@ -66,10 +67,14 @@ class LensSpecs(BaseModel):
     @model_validator(mode="after")
     def _apply_defaults(self) -> "LensSpecs":
         # See CameraSpecs._apply_defaults (models/camera.py) for why this is
-        # guarded on change rather than called unconditionally.
-        stripped_model = strip_redundant_brand_prefix(self.brand, self.model)
-        if stripped_model != self.model:
-            self.model = stripped_model
+        # guarded on change rather than called unconditionally. Both cleanup
+        # steps are combined into one assignment so the guard only needs to
+        # compare once.
+        cleaned_model = normalize_lens_model_text(
+            strip_redundant_brand_prefix(self.brand, self.model)
+        )
+        if cleaned_model != self.model:
+            self.model = cleaned_model
         if not self.slug:
             # See CameraSpecs._apply_defaults (models/camera.py) for why
             # mount has to be part of the slug: the same third-party lens is
