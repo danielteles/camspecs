@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/sheet";
 import type { FilterSection } from "@/components/filter-sidebar";
 import { FilterSidebar } from "@/components/filter-sidebar";
+import { Spinner } from "@/components/ui/spinner";
 
 interface MobileFilterDrawerProps {
   sections: FilterSection[];
@@ -25,6 +26,9 @@ interface MobileFilterDrawerProps {
   clearAllLabel: string;
   onClearAll: () => void;
   applyLabel: string;
+  /** Shows an inline spinner while a filter change is being applied. */
+  isPending?: boolean;
+  pendingLabel?: string;
 }
 
 export function MobileFilterDrawer({
@@ -38,12 +42,18 @@ export function MobileFilterDrawer({
   clearAllLabel,
   onClearAll,
   applyLabel,
+  isPending = false,
+  pendingLabel,
 }: MobileFilterDrawerProps) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetTrigger asChild>
         <Button variant="outline" size="sm" className="gap-1.5">
-          <SlidersHorizontalIcon className="size-4" aria-hidden />
+          {isPending ? (
+            <Spinner className="size-4" />
+          ) : (
+            <SlidersHorizontalIcon className="size-4" aria-hidden />
+          )}
           {triggerLabel}
           {activeCount > 0 && (
             <Badge variant="secondary" className="ml-0.5">
@@ -60,7 +70,12 @@ export function MobileFilterDrawer({
         <SheetHeader>
           <SheetTitle>{titleLabel}</SheetTitle>
         </SheetHeader>
-        <FilterSidebar sections={sections} idPrefix="mobile-" />
+        <FilterSidebar
+          sections={sections}
+          idPrefix="mobile-"
+          isPending={isPending}
+          pendingLabel={pendingLabel}
+        />
         <div className="border-border sticky bottom-0 mt-auto flex items-center gap-2 border-t bg-inherit pt-4">
           <Button
             type="button"

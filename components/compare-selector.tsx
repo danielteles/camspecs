@@ -5,6 +5,7 @@ import { SearchIcon, XIcon } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
+import { useCompareTransition } from "@/components/compare-transition-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -35,6 +36,7 @@ export function CompareSelector() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { startTransition } = useCompareTransition();
 
   const selectedSlugs = useMemo(
     () => parseCompareItems(searchParams.get(COMPARE_ITEMS_PARAM)),
@@ -131,7 +133,9 @@ export function CompareSelector() {
           }
         : { pathname };
 
-    router.replace(href, { scroll: false });
+    startTransition(() => {
+      router.replace(href, { scroll: false });
+    });
   }
 
   function handleSelect(item: CatalogItem) {
@@ -174,6 +178,7 @@ export function CompareSelector() {
               value={query}
               onValueChange={setQuery}
               placeholder={t("placeholder")}
+              isLoading={isLoading}
             />
             <CommandList>
               <CommandEmpty>

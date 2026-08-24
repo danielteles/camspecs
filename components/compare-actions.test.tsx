@@ -3,11 +3,20 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CompareActions } from "@/components/compare-actions";
+import { CompareTransitionProvider } from "@/components/compare-transition-provider";
 import {
   mockRouterReplace,
   mockUsePathname,
   mockUseSearchParams,
 } from "@/test/mocks/navigation";
+
+function renderCompareActions() {
+  return render(
+    <CompareTransitionProvider>
+      <CompareActions />
+    </CompareTransitionProvider>,
+  );
+}
 
 function stubClipboard() {
   const writeText = vi.fn().mockResolvedValue(undefined);
@@ -25,7 +34,7 @@ describe("CompareActions", () => {
 
   it("renders nothing when no items are selected", () => {
     mockUseSearchParams.mockReturnValue(new URLSearchParams());
-    const { container } = render(<CompareActions />);
+    const { container } = renderCompareActions();
 
     expect(container).toBeEmptyDOMElement();
   });
@@ -34,7 +43,7 @@ describe("CompareActions", () => {
     mockUseSearchParams.mockReturnValue(
       new URLSearchParams("items=sony-a7-iv"),
     );
-    render(<CompareActions />);
+    renderCompareActions();
 
     expect(
       screen.queryByRole("button", { name: "Swap items" }),
@@ -49,7 +58,7 @@ describe("CompareActions", () => {
     mockUseSearchParams.mockReturnValue(
       new URLSearchParams("items=sony-a7-iv,fujifilm-x-t5"),
     );
-    render(<CompareActions />);
+    renderCompareActions();
 
     await user.click(screen.getByRole("button", { name: "Swap items" }));
 
@@ -63,7 +72,7 @@ describe("CompareActions", () => {
     mockUseSearchParams.mockReturnValue(
       new URLSearchParams("items=sony-a7-iv,fujifilm-x-t5,om-system-om-1"),
     );
-    render(<CompareActions />);
+    renderCompareActions();
 
     expect(
       screen.queryByRole("button", { name: "Swap items" }),
@@ -77,7 +86,7 @@ describe("CompareActions", () => {
     );
     const writeText = stubClipboard();
 
-    render(<CompareActions />);
+    renderCompareActions();
 
     await user.click(screen.getByRole("button", { name: "Copy link" }));
 

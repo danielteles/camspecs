@@ -52,7 +52,8 @@
       "maxWeightFilterLabel": "Peso máximo",
       "minResolutionChip": "{value} MP o más",
       "maxWeightChip": "{value} g o menos",
-      "noResults": "Ninguna cámara coincide con los criterios seleccionados."
+      "noResults": "Ninguna cámara coincide con los criterios seleccionados.",
+      "loadingLabel": "Cargando cámaras…"
     },
     "lenses": {
       "title": "Lentes",
@@ -70,7 +71,8 @@
       "maxApertureFilterLabel": "Apertura máxima",
       "focalLengthChip": "{min}–{max}mm",
       "maxApertureChip": "ƒ/{value} o más rápido",
-      "noResults": "Ningún lente coincide con los criterios seleccionados."
+      "noResults": "Ningún lente coincide con los criterios seleccionados.",
+      "loadingLabel": "Cargando lentes…"
     }
   },
   "Filters": {
@@ -81,7 +83,8 @@
     "resetCta": "Restablecer filtros",
     "removeFilter": "Quitar filtro {label}",
     "activeFiltersLabel": "Filtros activos",
-    "applyLabel": "Mostrar {count} resultados"
+    "applyLabel": "Mostrar {count} resultados",
+    "updatingLabel": "Actualizando resultados…"
   },
   "CompareSelector": {
     "triggerLabel": "Añadir una cámara o lente…",
@@ -101,6 +104,7 @@
     "emptyState": "Busca cámaras o lentes arriba para empezar a comparar.",
     "addAnotherState": "Añade otro elemento arriba para ver una comparación.",
     "diffToggleLabel": "Ocultar especificaciones idénticas",
+    "updatingLabel": "Actualizando comparación…",
     "swapItemsCta": "Intercambiar elementos",
     "copyLinkCta": "Copiar enlace",
     "copiedLabel": "¡Copiado!",

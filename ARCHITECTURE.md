@@ -321,7 +321,9 @@ The client decides which options to show, and how many of each.**
   dim the results grid while the server round-trip for the new
   `searchParams` is in flight. The facet panel itself updates right
   away — its counts come from the client-held unfiltered array, not
-  from that round trip.
+  from that round trip. See "Loading feedback" below for the spinner,
+  skeleton, and accessibility markup built on top of this `isPending`
+  flag.
 
 - A range slider (`<FilterSidebar />`'s `"range"` section, backed by
   Radix `Slider`) encodes "no filter" as one specific position: the
@@ -354,6 +356,77 @@ A user reaches a product page from a card built by the shared
 `CatalogItemCard` component. The same card also adds the item to a
 comparison directly. Both actions worked the same way before this
 feature existed.
+
+## Loading feedback
+
+This section explains the loading feedback that the catalog pages and
+the compare page give the user, and the code behind each part.
+
+### Filter and selector clicks
+
+`CamerasCatalog` and `LensesCatalog` (`components/cameras-catalog.tsx`,
+`components/lenses-catalog.tsx`) already wrap their `router.replace`
+call in React's `useTransition` hook. That call updates the URL with
+the new filter state. `useTransition` returns an `isPending` flag
+while that update runs in the background.
+
+`FilterSidebar` and `MobileFilterDrawer`
+(`components/filter-sidebar.tsx`, `components/mobile-filter-drawer.tsx`)
+accept this `isPending` flag as a prop. Each renders a small spinner
+(`components/ui/spinner.tsx`) next to the filter list while
+`isPending` is true. The results grid dims to 50% opacity, and gets
+`pointer-events-none`, so a user cannot click a stale card while new
+results load.
+
+The compare page (`app/[locale]/compare/page.tsx`) needs a different
+approach. `CompareSelector`, `CompareActions`, and the results table
+are three separate Client Components around one server-rendered page.
+A single `useTransition` call inside one component cannot reach the
+other two. `CompareTransitionProvider`
+(`components/compare-transition-provider.tsx`) shares one
+`useTransition` between all three, through React Context.
+`CompareSelector` and `CompareActions` both read this context, instead
+of each running its own `useTransition`. `CompareTableOverlay`
+(`components/compare-table-overlay.tsx`) reads the same `isPending`
+flag, and blurs and dims the results while any of the three components
+triggers a change.
+
+`CompareSelector`'s search combobox also shows its own spinner.
+`CommandInput` (`components/ui/command.tsx`) accepts an `isLoading`
+prop, and swaps its search icon for a spinner while the debounced
+`/api/search` fetch is in flight.
+
+### Skeleton cards on page load
+
+If a route has a `loading.tsx` file, Next.js shows this fallback while
+the page's Server Component data fetch is in flight.
+`app/[locale]/cameras/loading.tsx` and `app/[locale]/lenses/loading.tsx`
+add this fallback for the catalog pages. Each file renders a full page
+skeleton: a title bar, a search bar, a sidebar, and a grid of card
+skeletons.
+
+`EquipmentCardSkeleton` (`components/equipment-card-skeleton.tsx`)
+matches the layout of a real `CatalogItemCard`: the same border,
+padding, and bar heights. `CatalogGridSkeleton`
+(`components/catalog-grid-skeleton.tsx`) renders six of these in the
+same grid layout as the real results. Because the skeleton matches the
+real layout, the page does not jump once real data replaces it.
+
+### Accessibility
+
+Every loading region in this feature carries two attributes together:
+`aria-busy="true"` and `aria-live="polite"`. This pairing is
+deliberate, not automatic. `aria-busy` tells a screen reader to wait
+before it announces changes inside the region. `aria-live="polite"`
+tells the screen reader to announce the region once it is no longer
+busy. Together, they announce one final update, not every small change
+inside the region.
+
+`CatalogGridSkeleton` also renders a visually hidden `sr-only` label,
+for example "Loading cameras…", inside its `role="status"` container.
+`FilterSidebar` renders a similar label next to its spinner. A screen
+reader announces this label, even though a sighted user only sees the
+spinner.
 
 ## Scraper pipeline
 

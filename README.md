@@ -105,6 +105,39 @@ treats an unset or invalid value as "no filter," not as an error. See
 `ARCHITECTURE.md`'s "Catalog browse pages" section for how filter state
 flows from the URL to the SQL query.
 
+## Loading feedback
+
+The catalog pages and the compare page show visual feedback while new
+data loads. This section explains the three parts of that feedback.
+
+**Filter clicks.** When you click a filter checkbox or drag a slider,
+the app does not freeze the screen. React's `useTransition` hook marks
+the URL update as a background update. A spinner appears next to the
+filter panel while the update runs, and the results grid dims. You can
+still see the old results while the app fetches the new ones.
+
+**Skeleton cards on page load.** When you open `/cameras` or `/lenses`,
+or refresh the page, Next.js shows placeholder cards first. These are
+called skeleton cards. Each skeleton card matches the size of a real
+camera or lens card. The real cards replace the skeletons once the
+server sends the data. This keeps the page layout stable, and prevents
+a blank screen.
+
+**Accessibility.** Screen readers need to know when content is
+loading. The app adds two attributes to each loading region:
+`aria-busy="true"` and `aria-live="polite"`. The `aria-busy` attribute
+tells a screen reader to wait before it announces changes. The
+`aria-live` attribute tells the screen reader to announce the region
+once it is no longer busy. Together, they announce one final update,
+not every small change.
+
+The compare page uses the same pattern. A spinner appears in the
+search box while it looks for matching cameras and lenses. The
+comparison table blurs and dims while you swap items or add a new one.
+
+See `ARCHITECTURE.md`'s "Loading feedback" section for the exact files
+and components behind this behavior.
+
 ## Learn More
 
 For more about Next.js, see these resources:

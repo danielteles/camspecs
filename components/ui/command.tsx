@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { InputGroup, InputGroupAddon } from "@/components/ui/input-group";
+import { Spinner } from "@/components/ui/spinner";
 import { SearchIcon, CheckIcon } from "lucide-react";
 
 function Command({
@@ -64,8 +65,12 @@ function CommandDialog({
 
 function CommandInput({
   className,
+  isLoading = false,
   ...props
-}: React.ComponentProps<typeof CommandPrimitive.Input>) {
+}: React.ComponentProps<typeof CommandPrimitive.Input> & {
+  /** Swaps the trailing search icon for a spinner while results are being fetched. */
+  isLoading?: boolean;
+}) {
   return (
     <div data-slot="command-input-wrapper" className="p-1 pb-0">
       <InputGroup className="border-input/30 bg-input/30 h-8! rounded-lg! shadow-none! *:data-[slot=input-group-addon]:pl-2!">
@@ -78,7 +83,11 @@ function CommandInput({
           {...props}
         />
         <InputGroupAddon>
-          <SearchIcon className="size-4 shrink-0 opacity-50" />
+          {isLoading ? (
+            <Spinner className="size-4 shrink-0 opacity-70" />
+          ) : (
+            <SearchIcon className="size-4 shrink-0 opacity-50" />
+          )}
         </InputGroupAddon>
       </InputGroup>
     </div>

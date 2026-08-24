@@ -3,6 +3,8 @@ import { Suspense } from "react";
 
 import { CompareActions } from "@/components/compare-actions";
 import { CompareSelector } from "@/components/compare-selector";
+import { CompareTableOverlay } from "@/components/compare-table-overlay";
+import { CompareTransitionProvider } from "@/components/compare-transition-provider";
 import { DiffToggle } from "@/components/diff-toggle";
 import { LastUpdatedBadge } from "@/components/last-updated-badge";
 import {
@@ -148,37 +150,41 @@ export default async function ComparePage({
         <p className="text-muted-foreground text-base">{t("description")}</p>
       </div>
 
-      <Suspense>
-        <CompareSelector />
-      </Suspense>
+      <CompareTransitionProvider>
+        <Suspense>
+          <CompareSelector />
+        </Suspense>
 
-      <Suspense>
-        <CompareActions />
-      </Suspense>
+        <Suspense>
+          <CompareActions />
+        </Suspense>
 
-      {items.length === 0 ? (
-        <p className="text-muted-foreground text-base">{t("emptyState")}</p>
-      ) : (
-        <>
-          {items.length === 1 && (
-            <p className="text-muted-foreground text-base">
-              {t("addAnotherState")}
-            </p>
-          )}
-          {items.length >= 2 ? (
-            <DiffToggle>{comparisonContent}</DiffToggle>
+        <CompareTableOverlay>
+          {items.length === 0 ? (
+            <p className="text-muted-foreground text-base">{t("emptyState")}</p>
           ) : (
-            comparisonContent
+            <>
+              {items.length === 1 && (
+                <p className="text-muted-foreground text-base">
+                  {t("addAnotherState")}
+                </p>
+              )}
+              {items.length >= 2 ? (
+                <DiffToggle>{comparisonContent}</DiffToggle>
+              ) : (
+                comparisonContent
+              )}
+              {oldestUpdatedAt && (
+                <LastUpdatedBadge
+                  date={oldestUpdatedAt}
+                  variant="aggregate"
+                  className="self-end"
+                />
+              )}
+            </>
           )}
-          {oldestUpdatedAt && (
-            <LastUpdatedBadge
-              date={oldestUpdatedAt}
-              variant="aggregate"
-              className="self-end"
-            />
-          )}
-        </>
-      )}
+        </CompareTableOverlay>
+      </CompareTransitionProvider>
     </main>
   );
 }
