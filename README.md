@@ -61,18 +61,18 @@ This project uses [`next/font`](https://nextjs.org/docs/app/building-your-applic
 ## Catalog filtering
 
 `/cameras` and `/lenses` support faceted filtering. Every filter is a URL
-query parameter, so a filtered view is a plain link — copy it, send it,
+query parameter. A filtered view is a plain link — copy it, send it, or
 bookmark it, and it opens to the same results. For example:
 
 ```
 /en/cameras?sensor=full-frame&brand=Sony&min_megapixels=24
 ```
 
-Filters are read server-side and applied as a real SQL `WHERE` clause
-(`lib/services/equipment.ts`), not filtered in the browser after the
-fact. Facet option counts (for example "Sony (3)") are computed against
-the full catalog, so a category never shows the wrong number even before
-you touch a checkbox.
+The server reads filters and applies them as a real SQL `WHERE` clause
+(`lib/services/equipment.ts`). The browser does not filter results after
+the fact. The app computes facet option counts (for example "Sony (3)")
+against the full catalog, so a category never shows the wrong number,
+even before you touch a checkbox.
 
 **`/cameras` parameters:**
 
