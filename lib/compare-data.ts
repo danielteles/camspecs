@@ -89,6 +89,20 @@ export function formatAperture(aperture: number): string {
   return `ƒ/${aperture.toFixed(1)}`;
 }
 
+/** Shared by the home page and catalog cards; either stat can be null
+ * (see lib/types.ts's Camera.megapixels/releaseYear) so this joins only
+ * the parts actually present instead of rendering a bare "MP" or year. */
+export function formatCameraCardMeta(
+  camera: Pick<Camera, "megapixels" | "releaseYear">,
+): string {
+  return [
+    camera.megapixels != null ? `${camera.megapixels} MP` : null,
+    camera.releaseYear != null ? String(camera.releaseYear) : null,
+  ]
+    .filter((part): part is string => part !== null)
+    .join(" · ");
+}
+
 function formatFocalLength(mm: number): string {
   return `${Math.round(mm)}mm`;
 }
@@ -156,7 +170,8 @@ const ROW_DEFINITIONS: RowDefinition[] = [
   {
     id: "releaseYear",
     labelKey: "ComparePage.rows.releaseYear",
-    getValue: (item) => String(item.releaseYear),
+    getValue: (item) =>
+      item.releaseYear != null ? String(item.releaseYear) : null,
   },
   {
     id: "sensorFormat",
@@ -189,7 +204,9 @@ const ROW_DEFINITIONS: RowDefinition[] = [
     id: "megapixels",
     labelKey: "ComparePage.rows.megapixels",
     getValue: (item) =>
-      item.type === "camera" ? `${item.megapixels} MP` : null,
+      item.type === "camera" && item.megapixels != null
+        ? `${item.megapixels} MP`
+        : null,
   },
   {
     id: "focalLength",

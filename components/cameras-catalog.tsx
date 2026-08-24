@@ -25,6 +25,7 @@ import {
 } from "@/lib/catalog-params";
 import { cameraMatchesFilters, countByFacet } from "@/lib/catalog-filtering";
 import {
+  formatCameraCardMeta,
   SENSOR_FORMAT_BADGE_VARIANT,
   SENSOR_FORMAT_KEYS,
 } from "@/lib/compare-data";
@@ -81,7 +82,9 @@ export function CamerasCatalog({ cameras, allCameras }: CamerasCatalogProps) {
   const resolutionBounds = useMemo(
     () =>
       bounds(
-        allCameras.map((c) => c.megapixels),
+        allCameras
+          .map((c) => c.megapixels)
+          .filter((mp): mp is number => mp != null),
         [0, 100],
       ),
     [allCameras],
@@ -376,7 +379,7 @@ export function CamerasCatalog({ cameras, allCameras }: CamerasCatalogProps) {
                   compareHref={`/compare?items=${camera.slug}`}
                   eyebrow={MOUNTS[camera.mount].name}
                   title={`${camera.brand} ${camera.model}`}
-                  meta={`${camera.megapixels} MP · ${camera.releaseYear}`}
+                  meta={formatCameraCardMeta(camera)}
                   badgeLabel={t(SENSOR_FORMAT_KEYS[camera.sensorFormat])}
                   badgeVariant={
                     SENSOR_FORMAT_BADGE_VARIANT[camera.sensorFormat]

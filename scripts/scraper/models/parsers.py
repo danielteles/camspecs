@@ -148,6 +148,23 @@ def normalize_brand(value: str) -> str:
     return stripped or value.strip()
 
 
+def strip_redundant_brand_prefix(brand: str, model: str) -> str:
+    """Strip a leading repeat of `brand` from `model` ("Canon EOS R10" -> "EOS R10").
+
+    Mirrors extractors/wikidata.py's own `_strip_brand_prefix` (which already
+    does this for a fresh Wikidata fetch, keyed off the *normalized* brand),
+    but applied here as a schema-level backstop so it also self-heals
+    already-stored data from before that ordering was correct, and covers
+    every source, not just Wikidata — confirmed live as a widespread
+    historical issue (21 camera rows, 26 lens rows in one production
+    catalog), not a one-off.
+    """
+    prefix = f"{brand} "
+    if model.lower().startswith(prefix.lower()):
+        return model[len(prefix) :].strip()
+    return model
+
+
 def slugify(value: str) -> str:
     """Turn a display string into a URL-safe, lowercase, hyphenated slug."""
     text = unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode("ascii")

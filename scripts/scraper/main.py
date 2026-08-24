@@ -23,6 +23,7 @@ from db.upsert import upsert_cameras, upsert_lenses
 from extractors import nikon, versus, wikidata
 from models import CameraSpecs, LensSpecs
 from transformers.merger import (
+    apply_curated_camera_release_years,
     apply_curated_lens_release_years,
     apply_curated_mount_overrides,
     apply_curated_sensor_format_overrides,
@@ -343,6 +344,7 @@ async def run_pipeline(args: argparse.Namespace) -> None:
         cameras = merge_records(raw_cameras)
         lenses = merge_records(raw_lenses)
         cameras = apply_curated_sensor_format_overrides(cameras)
+        cameras = apply_curated_camera_release_years(cameras)
         pre_filter_count = len(cameras)
         cameras = drop_unmergeable_wikidata_cameras(cameras)
         cameras = backfill_sensor_dimensions(cameras)

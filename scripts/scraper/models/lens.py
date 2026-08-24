@@ -6,7 +6,14 @@ from datetime import datetime, timezone
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator, model_validator
 
-from .parsers import normalize_brand, normalize_mount, parse_float, parse_weight_grams, slugify
+from .parsers import (
+    normalize_brand,
+    normalize_mount,
+    parse_float,
+    parse_weight_grams,
+    slugify,
+    strip_redundant_brand_prefix,
+)
 
 
 class LensSpecs(BaseModel):
@@ -58,6 +65,11 @@ class LensSpecs(BaseModel):
 
     @model_validator(mode="after")
     def _apply_defaults(self) -> "LensSpecs":
+        # See CameraSpecs._apply_defaults (models/camera.py) for why this is
+        # guarded on change rather than called unconditionally.
+        stripped_model = strip_redundant_brand_prefix(self.brand, self.model)
+        if stripped_model != self.model:
+            self.model = stripped_model
         if not self.slug:
             # See CameraSpecs._apply_defaults (models/camera.py) for why
             # mount has to be part of the slug: the same third-party lens is

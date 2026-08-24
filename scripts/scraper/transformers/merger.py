@@ -18,6 +18,7 @@ from pydantic import BaseModel
 from extractors.curated_fallbacks import (
     LENS_KIT_RELEASE_YEARS,
     MOUNT_SENSOR_FORMATS,
+    VERSUS_CAMERA_RELEASE_YEARS,
     VERSUS_SLUG_MOUNT_OVERRIDES,
 )
 from models.camera import CameraSpecs
@@ -159,6 +160,28 @@ def apply_curated_sensor_format_overrides(cameras: list[CameraSpecs]) -> list[Ca
         override = MOUNT_SENSOR_FORMATS.get(camera.mount)
         if override is not None:
             camera.sensor_format = override
+    return cameras
+
+
+def apply_curated_camera_release_years(cameras: list[CameraSpecs]) -> list[CameraSpecs]:
+    """Backfill release_year for the Versus camera slugs with a confirmed double-checked gap.
+
+    See `extractors.curated_fallbacks.VERSUS_CAMERA_RELEASE_YEARS` for which
+    slugs and why: each was checked live against both Versus's own spec
+    table and its Wikidata QID and found to carry no date anywhere, so the
+    normal cross-source backfill in `merge_records` never has anything to
+    pull from. Matched by the Versus slug embedded in `source_url`, same as
+    `apply_curated_lens_release_years` below.
+    """
+    for camera in cameras:
+        if camera.release_year is not None:
+            continue
+        slug = _versus_slug_from_source_url(camera.source_url)
+        if slug is None:
+            continue
+        override = VERSUS_CAMERA_RELEASE_YEARS.get(slug)
+        if override is not None:
+            camera.release_year = override
     return cameras
 
 

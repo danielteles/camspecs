@@ -35,10 +35,14 @@ function isSensorFormat(value: string): value is SensorFormat {
   return SENSOR_FORMATS.has(value);
 }
 
-// The scraper's schema allows values the frontend's Camera/Lens types
-// don't cover yet (nullable specs, mounts/sensor formats outside the
-// current unions). Rather than fake defaults, skip those rows here — at
-// the DB boundary — and log why, so callers only ever see fully-typed data.
+// A row is only excluded here for a field the frontend's Camera/Lens types
+// don't cover *at all* (a mount/sensor format outside the current unions)
+// or that the site's core equivalence-calculator feature actually needs
+// (sensor dimensions). A merely-missing display stat (megapixels,
+// release_year — genuine, common upstream gaps, not a scraper bug: see
+// scripts/scraper's data-completeness notes) passes through as null
+// instead, so real gear with an incomplete spec sheet still shows up
+// rather than vanishing from every listing.
 function toCamera(row: Selectable<CamerasTable>): Camera | null {
   if (!isMountId(row.mount)) {
     console.warn(
@@ -53,20 +57,13 @@ function toCamera(row: Selectable<CamerasTable>): Camera | null {
     return null;
   }
   if (row.sensor_width_mm == null || row.sensor_height_mm == null) {
+    // Unlike megapixels/release_year below, this one still excludes the
+    // row rather than passing null through: sensor dimensions feed the
+    // site's core equivalence calculator (lib/equivalence.ts), so a camera
+    // without them can't support the feature the site exists for, not just
+    // display one missing stat.
     console.warn(
       `[equipment] skipping camera "${row.slug}": missing sensor dimensions`,
-    );
-    return null;
-  }
-  if (row.megapixels == null) {
-    console.warn(
-      `[equipment] skipping camera "${row.slug}": missing megapixels`,
-    );
-    return null;
-  }
-  if (row.release_year == null) {
-    console.warn(
-      `[equipment] skipping camera "${row.slug}": missing release year`,
     );
     return null;
   }
@@ -92,13 +89,6 @@ function toLens(row: Selectable<LensesTable>): Lens | null {
     );
     return null;
   }
-  if (row.release_year == null) {
-    console.warn(
-      `[equipment] skipping lens "${row.slug}": missing release year`,
-    );
-    return null;
-  }
-
   return {
     slug: row.slug,
     brand: row.brand,

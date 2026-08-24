@@ -35,19 +35,6 @@ MOUNT_SENSOR_FORMATS: dict[str, SensorFormat] = {
     "fujifilm-g": SensorFormat.MEDIUM_FORMAT,
 }
 
-# Versus.com "camera + lens" kit slug (see `main.py`'s DEFAULT_VERSUS_LENS_
-# SLUGS) -> the lens half's real release year. These 5 are exactly the
-# lens-kit items `main.py`'s VERSUS_LENS_WIKIDATA_QIDS comment already
-# documents as checked live, one QID at a time, and confirmed to carry no
-# P577 (publication date) or P6949 (announcement date) statement on Wikidata
-# at all — a genuine upstream gap, not a query-limit issue a bigger
-# --wikidata-lens-limit would fix. (The 6th lens-kit item, sony-fe-50mm-f1-8,
-# isn't here because its Wikidata record *does* have a date and is already
-# backfilled dynamically by that QID lookup.)
-#
-# Each year is the lens's own manufacturer-announced release year (the same
-# P6949-as-stand-in-for-P577 convention `extractors/wikidata.py`'s
-# `_parse_release_year` already uses), sourced independently of Wikidata:
 # Versus.com camera product slug -> its real interchangeable-lens mount,
 # for the confirmed case where Versus's own spec table omits the
 # `lens-mount` row despite the camera genuinely having one. Discovered by
@@ -68,6 +55,31 @@ VERSUS_SLUG_MOUNT_OVERRIDES: dict[str, str] = {
     "sony-alpha-nex-c3": "sony-e",
 }
 
+# Versus.com camera product slug -> its real release year, for the confirmed
+# case where Versus's own spec table has no release-date row *and* the
+# camera's Wikidata item (checked live by QID, not just absence from the
+# general crawl's LIMIT window) has no P577/P6949 date statement either —
+# the same double-checked-gap standard LENS_KIT_RELEASE_YEARS below uses.
+#   - canon-eos-r1: Canon EOS R1 (Q105883423 on Wikidata, no date property
+#     at all) — announced 2024-07-17.
+#     https://www.dpreview.com/news/5361436240/canon-announces-eos-r1-flagship-sports-photojournalism-camera
+VERSUS_CAMERA_RELEASE_YEARS: dict[str, int] = {
+    "canon-eos-r1": 2024,
+}
+
+# Versus.com "camera + lens" kit slug (see `main.py`'s DEFAULT_VERSUS_LENS_
+# SLUGS) -> the lens half's real release year. These 5 are exactly the
+# lens-kit items `main.py`'s VERSUS_LENS_WIKIDATA_QIDS comment already
+# documents as checked live, one QID at a time, and confirmed to carry no
+# P577 (publication date) or P6949 (announcement date) statement on Wikidata
+# at all — a genuine upstream gap, not a query-limit issue a bigger
+# --wikidata-lens-limit would fix. (The 6th lens-kit item, sony-fe-50mm-f1-8,
+# isn't here because its Wikidata record *does* have a date and is already
+# backfilled dynamically by that QID lookup.)
+#
+# Each year is the lens's own manufacturer-announced release year (the same
+# P6949-as-stand-in-for-P577 convention `extractors/wikidata.py`'s
+# `_parse_release_year` already uses), sourced independently of Wikidata:
 LENS_KIT_RELEASE_YEARS: dict[str, int] = {
     # Sony E 18-135mm F3.5-5.6 OSS (SEL18135) — announced 2018-01-04.
     # https://www.dpreview.com/news/7071041993/

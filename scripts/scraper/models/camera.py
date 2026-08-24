@@ -14,6 +14,7 @@ from .parsers import (
     parse_float,
     parse_weight_grams,
     slugify,
+    strip_redundant_brand_prefix,
 )
 
 
@@ -96,6 +97,14 @@ class CameraSpecs(BaseModel):
 
     @model_validator(mode="after")
     def _apply_defaults(self) -> "CameraSpecs":
+        # Guarded on change, not just called unconditionally: `validate_
+        # assignment=True` means `self.model = ...` re-invokes this whole
+        # validator, and pydantic doesn't skip that re-entry just because
+        # the new value equals the old one — an unconditional assignment
+        # here recurses forever instead of reaching a fixed point.
+        stripped_model = strip_redundant_brand_prefix(self.brand, self.model)
+        if stripped_model != self.model:
+            self.model = stripped_model
         if not self.slug:
             # Mount is part of the slug, not just brand+model: it's what
             # `transformers/merger.py`'s `merge_key` already uses to decide

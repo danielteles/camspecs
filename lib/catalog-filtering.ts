@@ -34,7 +34,7 @@ export function cameraMatchesFilters(
   }
   if (
     filters.minResolutionMp != null &&
-    camera.megapixels < filters.minResolutionMp
+    (camera.megapixels == null || camera.megapixels < filters.minResolutionMp)
   ) {
     return false;
   }
