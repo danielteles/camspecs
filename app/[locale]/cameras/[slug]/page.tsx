@@ -43,8 +43,10 @@ export async function generateStaticParams() {
 }
 
 // Fallback for the case an on-demand revalidatePath call (triggered by the
-// scraper pipeline after an upsert, see app/api/revalidate) is missed.
-export const revalidate = 3600;
+// scraper pipeline after an upsert, see app/api/revalidate) is missed. The
+// scraper only runs roughly every two weeks, so this window can be long —
+// see lib/services/equipment.ts's EQUIPMENT_CACHE_REVALIDATE_SECONDS.
+export const revalidate = 1209600; // 14 days
 
 export async function generateMetadata({
   params,

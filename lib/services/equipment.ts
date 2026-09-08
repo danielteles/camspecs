@@ -1,8 +1,20 @@
 import type { Kysely, Selectable } from "kysely";
+import { unstable_cache } from "next/cache";
 
 import { getDb } from "@/lib/db/client";
 import type { CamerasTable, Database, LensesTable } from "@/lib/db/schema";
 import type { Camera, Lens, MountId, SensorFormat } from "@/lib/types";
+
+// Neon bills egress on every query that crosses its public network boundary,
+// and these two tables are read on nearly every request (listing pages, the
+// footer on every page, search autocomplete on every keystroke, opengraph
+// images) — without this, each of those hits Postgres directly. The scraper
+// pipeline only runs about every two weeks and always calls
+// /api/revalidate's revalidateTag on upsert (see app/api/revalidate), so
+// this time-based window is just a backstop for a missed on-demand call,
+// not the primary freshness mechanism — it can be long. Matches the
+// page-level `revalidate` exports that carry the same fallback role.
+const EQUIPMENT_CACHE_REVALIDATE_SECONDS = 60 * 60 * 24 * 14; // 14 days
 
 // Re-derived from MountId rather than trusted from the DB column, which is
 // a plain String with no enum constraint of its own (see
@@ -178,7 +190,7 @@ export function buildCamerasQuery(
   return query;
 }
 
-export async function getFilteredCameras(
+async function fetchFilteredCameras(
   filters: CameraFilters = {},
   sort?: CameraSort,
 ): Promise<Camera[]> {
@@ -187,6 +199,12 @@ export async function getFilteredCameras(
     .map(toCamera)
     .filter((camera): camera is Camera => camera !== null);
 }
+
+export const getFilteredCameras = unstable_cache(
+  fetchFilteredCameras,
+  ["equipment-cameras"],
+  { tags: ["cameras"], revalidate: EQUIPMENT_CACHE_REVALIDATE_SECONDS },
+);
 
 export async function getAllCameras(): Promise<Camera[]> {
   return getFilteredCameras();
@@ -260,7 +278,7 @@ export function buildLensesQuery(
   return query;
 }
 
-export async function getFilteredLenses(
+async function fetchFilteredLenses(
   filters: LensFilters = {},
   sort?: LensSort,
 ): Promise<Lens[]> {
@@ -268,11 +286,17 @@ export async function getFilteredLenses(
   return rows.map(toLens).filter((lens): lens is Lens => lens !== null);
 }
 
+export const getFilteredLenses = unstable_cache(
+  fetchFilteredLenses,
+  ["equipment-lenses"],
+  { tags: ["lenses"], revalidate: EQUIPMENT_CACHE_REVALIDATE_SECONDS },
+);
+
 export async function getAllLenses(): Promise<Lens[]> {
   return getFilteredLenses();
 }
 
-export async function getCameraBySlug(slug: string): Promise<Camera | null> {
+async function fetchCameraBySlug(slug: string): Promise<Camera | null> {
   const row = await getDb()
     .selectFrom("cameras")
     .selectAll()
@@ -281,7 +305,13 @@ export async function getCameraBySlug(slug: string): Promise<Camera | null> {
   return row ? toCamera(row) : null;
 }
 
-export async function getLensBySlug(slug: string): Promise<Lens | null> {
+export const getCameraBySlug = unstable_cache(
+  fetchCameraBySlug,
+  ["equipment-camera-by-slug"],
+  { tags: ["cameras"], revalidate: EQUIPMENT_CACHE_REVALIDATE_SECONDS },
+);
+
+async function fetchLensBySlug(slug: string): Promise<Lens | null> {
   const row = await getDb()
     .selectFrom("lenses")
     .selectAll()
@@ -289,3 +319,9 @@ export async function getLensBySlug(slug: string): Promise<Lens | null> {
     .executeTakeFirst();
   return row ? toLens(row) : null;
 }
+
+export const getLensBySlug = unstable_cache(
+  fetchLensBySlug,
+  ["equipment-lens-by-slug"],
+  { tags: ["lenses"], revalidate: EQUIPMENT_CACHE_REVALIDATE_SECONDS },
+);

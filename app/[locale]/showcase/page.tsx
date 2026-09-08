@@ -16,7 +16,10 @@ import { isDatabaseConfigured } from "@/lib/db/client";
 import { MOUNTS } from "@/lib/mounts";
 import { getAllCameras } from "@/lib/services/equipment";
 
-export const revalidate = 3600;
+// Backstop for a missed on-demand revalidateTag call from the scraper
+// pipeline (which runs roughly every two weeks) — see
+// lib/services/equipment.ts's EQUIPMENT_CACHE_REVALIDATE_SECONDS.
+export const revalidate = 1209600; // 14 days
 
 export default async function ShowcasePage({
   params,

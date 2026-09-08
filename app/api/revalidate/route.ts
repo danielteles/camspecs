@@ -1,4 +1,4 @@
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import type { NextRequest } from "next/server";
 
 import { routing } from "@/i18n/routing";
@@ -58,6 +58,19 @@ export async function POST(request: NextRequest) {
   }
   for (const path of paths) {
     revalidatePath(path);
+  }
+  // Invalidates the cached DB reads from lib/services/equipment.ts (footer,
+  // search, listing pages, opengraph images, etc.) — revalidatePath above
+  // only covers the individual [slug] pages, not everywhere else those
+  // cached queries are used. { expire: 0 } (rather than the "max"
+  // stale-while-revalidate profile) since this route is called by an
+  // external webhook that needs the change visible immediately, matching
+  // revalidatePath's immediate-expiry semantics above.
+  if (cameraSlugs.length > 0) {
+    revalidateTag("cameras", { expire: 0 });
+  }
+  if (lensSlugs.length > 0) {
+    revalidateTag("lenses", { expire: 0 });
   }
 
   return Response.json({ revalidated: true, paths });
