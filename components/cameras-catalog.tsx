@@ -2,8 +2,7 @@
 
 import { SearchIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useSearchParams } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useMemo } from "react";
 
 import {
   ActiveFilterBadges,
@@ -18,12 +17,16 @@ import {
   InputGroupAddon,
   InputGroupInput,
 } from "@/components/ui/input-group";
-import { usePathname, useRouter } from "@/i18n/navigation";
+import { useCatalogFilterUrlState } from "@/components/use-catalog-filter-url-state";
 import {
   parseCameraFilters,
   serializeCameraFilters,
 } from "@/lib/catalog-params";
-import { cameraMatchesFilters, countByFacet } from "@/lib/catalog-filtering";
+import {
+  bounds,
+  cameraMatchesFilters,
+  countByFacet,
+} from "@/lib/catalog-filtering";
 import {
   formatCameraCardMeta,
   SENSOR_FORMAT_BADGE_VARIANT,
@@ -41,43 +44,28 @@ interface CamerasCatalogProps {
   allCameras: Camera[];
 }
 
-function bounds(
-  values: number[],
-  fallback: [number, number],
-): [number, number] {
-  if (values.length === 0) {
-    return fallback;
-  }
-  return [Math.min(...values), Math.max(...values)];
-}
+const EMPTY_CAMERA_FILTERS: CameraFilters = {};
 
 export function CamerasCatalog({ cameras, allCameras }: CamerasCatalogProps) {
   const t = useTranslations();
   const tCatalog = useTranslations("Catalog");
   const tCameras = useTranslations("Catalog.cameras");
   const tFilters = useTranslations("Filters");
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const [isPending, startTransition] = useTransition();
-  const [query, setQuery] = useState("");
-  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
-  const filters = useMemo(
-    () => parseCameraFilters(searchParams),
-    [searchParams],
-  );
-
-  function updateFilters(next: CameraFilters) {
-    const nextQuery = serializeCameraFilters(next);
-    const href =
-      Object.keys(nextQuery).length > 0
-        ? { pathname, query: nextQuery }
-        : { pathname };
-    startTransition(() => {
-      router.replace(href, { scroll: false });
-    });
-  }
+  const {
+    filters,
+    updateFilters,
+    resetAll,
+    query,
+    setQuery,
+    mobileFiltersOpen,
+    setMobileFiltersOpen,
+    isPending,
+  } = useCatalogFilterUrlState<CameraFilters>({
+    emptyFilters: EMPTY_CAMERA_FILTERS,
+    parseFilters: parseCameraFilters,
+    serializeFilters: serializeCameraFilters,
+  });
 
   const resolutionBounds = useMemo(
     () =>
@@ -291,11 +279,6 @@ export function CamerasCatalog({ cameras, allCameras }: CamerasCatalogProps) {
       `${camera.brand} ${camera.model}`.toLowerCase().includes(normalizedQuery),
     );
   }, [cameras, query]);
-
-  function resetAll() {
-    setQuery("");
-    updateFilters({});
-  }
 
   const hasActiveCriteria = activeChips.length > 0 || query.trim().length > 0;
 

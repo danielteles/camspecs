@@ -222,6 +222,39 @@ describe("FilterSidebar", () => {
     expect(onChange).toHaveBeenCalledExactlyOnceWith([80]);
   });
 
+  it("doesn't interrupt an in-progress drag when the parent re-renders with an equal-but-new value array", () => {
+    const onChange = vi.fn();
+    const { rerender } = render(
+      <FilterSidebar
+        sections={[
+          resolutionSection({ min: 0, max: 100, value: [0], onChange }),
+        ]}
+      />,
+    );
+
+    const root = getSliderRoot();
+    mockSliderRect(root, { left: 0, width: 200 });
+
+    fireEvent.pointerDown(root, { pointerId: 1, button: 0, clientX: 0 });
+    fireEvent.pointerMove(root, { pointerId: 1, clientX: 100 });
+    expect(screen.getByText("50 MP")).toBeInTheDocument();
+
+    // Simulates an unrelated parent re-render that rebuilds a fresh `value`
+    // array literal with the same numbers (e.g. cameras-catalog.tsx's
+    // `sections` memo recomputing after a sibling filter commits) — a new
+    // reference, but nothing this slider's value actually changed.
+    rerender(
+      <FilterSidebar
+        sections={[
+          resolutionSection({ min: 0, max: 100, value: [0], onChange }),
+        ]}
+      />,
+    );
+
+    expect(screen.getByText("50 MP")).toBeInTheDocument();
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
   it("prefixes checkbox ids so two instances can render at once without collisions", () => {
     render(<FilterSidebar sections={[brandSection()]} idPrefix="mobile-" />);
 

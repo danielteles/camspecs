@@ -2,8 +2,7 @@
 
 import { SearchIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useSearchParams } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useMemo } from "react";
 
 import {
   ActiveFilterBadges,
@@ -18,9 +17,13 @@ import {
   InputGroupAddon,
   InputGroupInput,
 } from "@/components/ui/input-group";
-import { usePathname, useRouter } from "@/i18n/navigation";
+import { useCatalogFilterUrlState } from "@/components/use-catalog-filter-url-state";
 import { parseLensFilters, serializeLensFilters } from "@/lib/catalog-params";
-import { countByFacet, lensMatchesFilters } from "@/lib/catalog-filtering";
+import {
+  bounds,
+  countByFacet,
+  lensMatchesFilters,
+} from "@/lib/catalog-filtering";
 import { formatAperture, formatFocalLengthRange } from "@/lib/compare-data";
 import { MOUNTS } from "@/lib/mounts";
 import type { LensFilters } from "@/lib/services/equipment";
@@ -34,39 +37,27 @@ interface LensesCatalogProps {
   allLenses: Lens[];
 }
 
-function bounds(
-  values: number[],
-  fallback: [number, number],
-): [number, number] {
-  if (values.length === 0) {
-    return fallback;
-  }
-  return [Math.min(...values), Math.max(...values)];
-}
+const EMPTY_LENS_FILTERS: LensFilters = {};
 
 export function LensesCatalog({ lenses, allLenses }: LensesCatalogProps) {
   const tCatalog = useTranslations("Catalog");
   const tLenses = useTranslations("Catalog.lenses");
   const tFilters = useTranslations("Filters");
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const [isPending, startTransition] = useTransition();
-  const [query, setQuery] = useState("");
-  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
-  const filters = useMemo(() => parseLensFilters(searchParams), [searchParams]);
-
-  function updateFilters(next: LensFilters) {
-    const nextQuery = serializeLensFilters(next);
-    const href =
-      Object.keys(nextQuery).length > 0
-        ? { pathname, query: nextQuery }
-        : { pathname };
-    startTransition(() => {
-      router.replace(href, { scroll: false });
-    });
-  }
+  const {
+    filters,
+    updateFilters,
+    resetAll,
+    query,
+    setQuery,
+    mobileFiltersOpen,
+    setMobileFiltersOpen,
+    isPending,
+  } = useCatalogFilterUrlState<LensFilters>({
+    emptyFilters: EMPTY_LENS_FILTERS,
+    parseFilters: parseLensFilters,
+    serializeFilters: serializeLensFilters,
+  });
 
   const focalLengthBounds = useMemo(
     () =>
@@ -282,11 +273,6 @@ export function LensesCatalog({ lenses, allLenses }: LensesCatalogProps) {
       `${lens.brand} ${lens.model}`.toLowerCase().includes(normalizedQuery),
     );
   }, [lenses, query]);
-
-  function resetAll() {
-    setQuery("");
-    updateFilters({});
-  }
 
   const hasActiveCriteria = activeChips.length > 0 || query.trim().length > 0;
 

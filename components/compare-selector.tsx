@@ -50,6 +50,7 @@ export function CompareSelector() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<CatalogItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [hasError, setHasError] = useState(false);
 
   const selectedItems = selectedSlugs
     .map((slug) => itemsBySlug[slug])
@@ -82,7 +83,10 @@ export function CompareSelector() {
       })
       .catch((error: unknown) => {
         if (!(error instanceof DOMException && error.name === "AbortError")) {
-          throw error;
+          console.error(
+            "[CompareSelector] failed to hydrate chip labels",
+            error,
+          );
         }
       });
 
@@ -100,6 +104,7 @@ export function CompareSelector() {
 
     const timeoutId = setTimeout(() => {
       setIsLoading(true);
+      setHasError(false);
       fetch(`/api/search?q=${encodeURIComponent(query)}`, {
         signal: controller.signal,
       })
@@ -109,9 +114,13 @@ export function CompareSelector() {
           setIsLoading(false);
         })
         .catch((error: unknown) => {
-          if (!(error instanceof DOMException && error.name === "AbortError")) {
-            throw error;
+          if (error instanceof DOMException && error.name === "AbortError") {
+            return;
           }
+          console.error("[CompareSelector] search failed", error);
+          setResults([]);
+          setIsLoading(false);
+          setHasError(true);
         });
     }, SEARCH_DEBOUNCE_MS);
 
@@ -184,9 +193,11 @@ export function CompareSelector() {
               <CommandEmpty>
                 {isMaxed
                   ? t("maxReached", { max: MAX_COMPARE_ITEMS })
-                  : isLoading
-                    ? t("searching")
-                    : t("empty")}
+                  : hasError
+                    ? t("searchError")
+                    : isLoading
+                      ? t("searching")
+                      : t("empty")}
               </CommandEmpty>
               {!isMaxed &&
                 visibleResults.map((item) => (

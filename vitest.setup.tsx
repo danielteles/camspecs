@@ -42,18 +42,26 @@ if (!Element.prototype.scrollIntoView) {
 // Stateful, so hasPointerCapture reflects real capture/release calls instead
 // of always returning false — radix-ui's Slider gates pointermove/pointerup
 // handling on hasPointerCapture, so a dumb false-returning stub would make
-// every simulated drag in tests silently no-op.
-if (!Element.prototype.setPointerCapture) {
-  const capturedPointerIds = new WeakMap<Element, Set<number>>();
+// every simulated drag in tests silently no-op. Each method is guarded by
+// its own existence check (not bundled behind one), so a jsdom upgrade that
+// adds only one of the three natively can't silently leave the other two
+// unimplemented.
+const capturedPointerIds = new WeakMap<Element, Set<number>>();
+
+if (!Element.prototype.hasPointerCapture) {
   Element.prototype.hasPointerCapture = function (pointerId: number) {
     return capturedPointerIds.get(this)?.has(pointerId) ?? false;
   };
+}
+if (!Element.prototype.setPointerCapture) {
   Element.prototype.setPointerCapture = function (pointerId: number) {
     if (!capturedPointerIds.has(this)) {
       capturedPointerIds.set(this, new Set());
     }
     capturedPointerIds.get(this)!.add(pointerId);
   };
+}
+if (!Element.prototype.releasePointerCapture) {
   Element.prototype.releasePointerCapture = function (pointerId: number) {
     capturedPointerIds.get(this)?.delete(pointerId);
   };

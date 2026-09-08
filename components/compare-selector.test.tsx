@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CompareSelector } from "@/components/compare-selector";
 import { CompareTransitionProvider } from "@/components/compare-transition-provider";
@@ -106,5 +106,31 @@ describe("CompareSelector", () => {
     expect(
       await screen.findByText("No results found.", {}, { timeout: 2000 }),
     ).toBeInTheDocument();
+  });
+
+  it("shows an error state and stops loading when the search request fails", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => Promise.reject(new Error("network down"))),
+    );
+    const user = userEvent.setup();
+    renderCompareSelector();
+
+    await user.click(
+      screen.getByRole("button", { name: "Add a camera or lens…" }),
+    );
+    await user.type(
+      screen.getByPlaceholderText("Search by brand or model…"),
+      "sony",
+    );
+
+    expect(
+      await screen.findByText(
+        "Something went wrong searching. Try again.",
+        {},
+        { timeout: 2000 },
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Searching…")).not.toBeInTheDocument();
   });
 });

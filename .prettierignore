@@ -5,3 +5,6 @@ package-lock.json
 scripts/scraper/.venv
 scripts/scraper/**/__pycache__
 scripts/scraper/.pytest_cache
+# Local Claude Code skill/agent state, not app source.
+.agents
+.claude

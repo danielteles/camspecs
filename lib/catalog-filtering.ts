@@ -1,6 +1,20 @@
 import type { CameraFilters, LensFilters } from "./services/equipment";
 import type { Camera, Lens } from "./types";
 
+/** Min/max of `values`, or `fallback` when there's nothing to measure
+ * (e.g. every item is missing this stat). Shared by the cameras and lenses
+ * catalogs to derive each range filter's slider bounds from the current
+ * (unfiltered) catalog. */
+export function bounds(
+  values: number[],
+  fallback: [number, number],
+): [number, number] {
+  if (values.length === 0) {
+    return fallback;
+  }
+  return [Math.min(...values), Math.max(...values)];
+}
+
 /**
  * Mirrors buildCamerasQuery's WHERE semantics (lib/services/equipment.ts)
  * in plain TypeScript so the same rules can run client-side, over the full

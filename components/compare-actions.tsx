@@ -54,7 +54,12 @@ export function CompareActions() {
   }
 
   async function handleCopyLink() {
-    await navigator.clipboard.writeText(window.location.href);
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+    } catch (error) {
+      console.error("[CompareActions] failed to copy link", error);
+      return;
+    }
     setCopied(true);
     setTimeout(() => setCopied(false), COPY_FEEDBACK_MS);
   }
