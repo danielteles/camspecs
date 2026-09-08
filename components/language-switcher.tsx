@@ -11,7 +11,7 @@ import { routing } from "@/i18n/routing";
 function getLanguageAutonym(locale: string): string {
   const name =
     new Intl.DisplayNames([locale], { type: "language" }).of(locale) ?? locale;
-  const [languageName] = name.split(" (");
+  const languageName = name.split(" (")[0] ?? name;
   return languageName.charAt(0).toUpperCase() + languageName.slice(1);
 }
 

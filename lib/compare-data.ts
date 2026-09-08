@@ -43,15 +43,31 @@ export function resolveComparisonItems(
     .filter((item): item is ComparisonItem => item !== undefined);
 }
 
+function isCameraItem(
+  item: ComparisonItem,
+): item is Extract<ComparisonItem, { type: "camera" }> {
+  return item.type === "camera";
+}
+
 /**
  * A lens has no sensor of its own, so its 35mm-equivalent specs are derived
- * from a camera sharing its mount.
+ * from a camera sharing its mount. Prefers a camera the user is actually
+ * comparing the lens against; only when none is present does it fall back
+ * to an arbitrary camera from the full catalog (e.g. on a standalone lens
+ * product page, where there's no camera the user picked at all).
  */
 function getNativeCameraForLens(
   lens: Lens,
   cameras: Camera[],
+  comparedItems: ComparisonItem[] = [],
 ): Camera | undefined {
-  return cameras.find((camera) => camera.mount === lens.mount);
+  const comparedCamera = comparedItems.find(
+    (item): item is Extract<ComparisonItem, { type: "camera" }> =>
+      isCameraItem(item) && item.mount === lens.mount,
+  );
+  return (
+    comparedCamera ?? cameras.find((camera) => camera.mount === lens.mount)
+  );
 }
 
 function i18nValue(key: string): string {
@@ -135,10 +151,15 @@ export interface ComparisonRow {
   isIdentical: boolean;
 }
 
+interface RowContext {
+  cameras: Camera[];
+  items: ComparisonItem[];
+}
+
 interface RowDefinition {
   id: string;
   labelKey: string;
-  getValue: (item: ComparisonItem, cameras: Camera[]) => string | null;
+  getValue: (item: ComparisonItem, context: RowContext) => string | null;
 }
 
 const ROW_DEFINITIONS: RowDefinition[] = [
@@ -192,11 +213,11 @@ const ROW_DEFINITIONS: RowDefinition[] = [
   {
     id: "cropFactor",
     labelKey: "ComparePage.rows.cropFactor",
-    getValue: (item, cameras) => {
+    getValue: (item, { cameras, items }) => {
       const sensor =
         item.type === "camera"
           ? item.sensor
-          : getNativeCameraForLens(item, cameras)?.sensor;
+          : getNativeCameraForLens(item, cameras, items)?.sensor;
       return sensor ? formatCropFactor(getCropFactor(sensor)) : null;
     },
   },
@@ -225,11 +246,11 @@ const ROW_DEFINITIONS: RowDefinition[] = [
   {
     id: "equivalentFocalLength",
     labelKey: "ComparePage.rows.equivalentFocalLength",
-    getValue: (item, cameras) => {
+    getValue: (item, { cameras, items }) => {
       if (item.type !== "lens") {
         return null;
       }
-      const nativeCamera = getNativeCameraForLens(item, cameras);
+      const nativeCamera = getNativeCameraForLens(item, cameras, items);
       if (!nativeCamera) {
         return null;
       }
@@ -243,11 +264,11 @@ const ROW_DEFINITIONS: RowDefinition[] = [
   {
     id: "equivalentAperture",
     labelKey: "ComparePage.rows.equivalentAperture",
-    getValue: (item, cameras) => {
+    getValue: (item, { cameras, items }) => {
       if (item.type !== "lens") {
         return null;
       }
-      const nativeCamera = getNativeCameraForLens(item, cameras);
+      const nativeCamera = getNativeCameraForLens(item, cameras, items);
       if (!nativeCamera) {
         return null;
       }
@@ -260,11 +281,11 @@ const ROW_DEFINITIONS: RowDefinition[] = [
   {
     id: "diagonalFieldOfView",
     labelKey: "ComparePage.rows.diagonalFieldOfView",
-    getValue: (item, cameras) => {
+    getValue: (item, { cameras, items }) => {
       if (item.type !== "lens") {
         return null;
       }
-      const nativeCamera = getNativeCameraForLens(item, cameras);
+      const nativeCamera = getNativeCameraForLens(item, cameras, items);
       if (!nativeCamera) {
         return null;
       }
@@ -287,8 +308,9 @@ export function buildComparisonRows(
   items: ComparisonItem[],
   cameras: Camera[] = [],
 ): ComparisonRow[] {
+  const context: RowContext = { cameras, items };
   return ROW_DEFINITIONS.map((definition) => {
-    const values = items.map((item) => definition.getValue(item, cameras));
+    const values = items.map((item) => definition.getValue(item, context));
     const isIdentical = values.every((value) => value === values[0]);
 
     return {

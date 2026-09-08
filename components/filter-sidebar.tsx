@@ -123,11 +123,19 @@ function CheckboxSection({
   );
 }
 
+function sameValues(a: number[], b: number[]): boolean {
+  return a.length === b.length && a.every((value, index) => value === b[index]);
+}
+
 function RangeSection({ section }: { section: RangeFilterSection }) {
   const format = section.formatValue ?? String;
   const [liveValue, setLiveValue] = useState(section.value);
   const [prevSectionValue, setPrevSectionValue] = useState(section.value);
-  if (section.value !== prevSectionValue) {
+  // Compares by content, not reference: the parent rebuilds a fresh array
+  // literal on every catalog re-render (see cameras-catalog.tsx's `sections`
+  // memo), so reference equality would reset the live drag value on every
+  // unrelated filter change even when the numbers haven't moved.
+  if (!sameValues(section.value, prevSectionValue)) {
     setPrevSectionValue(section.value);
     setLiveValue(section.value);
   }

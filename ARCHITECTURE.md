@@ -221,16 +221,25 @@ WHERE clause produce the right SQL" — a deliberate choice, not a gap.
 See `lib/services/equipment.test.ts`.
 
 A lens has no sensor of its own. `getNativeCameraForLens`, in
-`lib/compare-data.ts`, finds a camera in the catalog with the same mount,
-and uses that camera's crop factor for the lens's 35mm-equivalent specs.
-This PoC simplification was originally hidden by a curated mock catalog
-with exactly one camera per mount. The real catalog has no such
-guarantee: `scripts/scraper/main.py` scrapes several camera bodies per
-mount, from more than one source. As a result,
-`getNativeCameraForLens` picks whichever matching camera Kysely's
-`orderBy("brand").orderBy("model")` puts first, not a camera the user
-picked. A real product needs the user to pick a body, instead of the app
-inferring one.
+`lib/compare-data.ts`, needs a camera's crop factor for the lens's
+35mm-equivalent specs.
+
+It prefers a camera that the user compares the lens against.
+`buildComparisonRows` passes it the full list of items in the current
+comparison. The function looks there first for a camera on the same
+mount.
+
+If no such camera is present, it uses the first camera in the full
+catalog with the same mount instead. Kysely's
+`orderBy("brand").orderBy("model")` sets this order. This can happen on
+a standalone lens product page, or in a comparison with no camera at
+all.
+
+This fallback is still a guess, not a real pick. The field of view
+visualizer on the standalone lens page
+(`app/[locale]/lenses/[slug]/page.tsx`) has the same open question. It
+has no comparison to draw a preferred camera from. A real product needs
+the user to pick a camera body. The app must not guess one.
 
 Every part of the app that reads the catalog uses one of a small set of
 pure functions. Each function has its own tests, and each takes
@@ -686,7 +695,7 @@ have React Testing Library tests, run in a `jsdom` environment
 card, the compare selector, the compare-page swap-and-copy actions, the
 navbar, the footer, the last-updated badge, and the three filter
 components (`FilterSidebar`, `MobileFilterDrawer`, `ActiveFilterBadges`).
-The project has 198 tests, across 19 files, at last count.
+The project has 202 tests, across 19 files, at last count.
 
 Three interactive pieces still have no automated coverage: the diff
 toggle, the field-of-view slider, and locale switching that keeps the
@@ -729,17 +738,19 @@ open:
   tokens already support dark mode, but no control turns it on.
 - The project needs a production value for `NEXT_PUBLIC_SITE_URL`, in
   `lib/site-config.ts`. This value defaults to `localhost` today.
-- `getNativeCameraForLens`, in `lib/compare-data.ts`, picks the first
-  camera on a lens's mount rather than a camera the user picked. See
-  Data layer above. The real catalog now has more than one camera per
-  mount, so this simplification is visible in production, not only in
-  theory.
-- `GET /api/dev/db-check` (`app/api/dev/db-check/route.ts`) is a
-  temporary endpoint from an earlier migration step, kept only to prove
-  the Postgres service layer returned real rows. Its own comment says to
-  remove it once the catalog and product pages read through the same
-  functions in normal page loads. They now do, so this endpoint is safe
-  to delete.
+- `tsconfig.json` enables every strict compiler flag except
+  `exactOptionalPropertyTypes`. This flag is off on purpose, not by
+  oversight. Some first-party types, for example `CameraFilters`,
+  `LensFilters`, and `FilterSidebarProps`, use an optional field to mean
+  "clear this filter". They assign `undefined` to the field explicitly.
+  The flag treats this as different from an omitted key. Radix's own
+  `Slider` prop types do not support this flag either. As a result, the
+  mismatch is not fully ours to fix. A move to this flag needs a full
+  pass over these filter types, not a simple config change.
+- `getNativeCameraForLens`, in `lib/compare-data.ts`, prefers a camera
+  that the user compares a lens against. On the standalone lens product
+  page, it uses the first camera on the mount instead. That page has no
+  comparison to draw a preferred camera from (see Data layer above).
 - The app computes faceted filter option counts client-side (see
   "Catalog browse pages" above), against the full, unfiltered catalog
   fetched alongside the filtered results. This is a deliberate trade

@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 
+import type { Camera } from "@/lib/types";
 import { CAMERAS, LENSES } from "@/test/mocks/equipment";
 
 import {
   buildComparisonRows,
   getI18nKey,
   resolveComparisonItems,
+  type ComparisonItem,
 } from "./compare-data";
 
 function resolve(slugs: string[]) {
@@ -113,6 +115,39 @@ describe("buildComparisonRows", () => {
 
     expect(getRow(rows, "focalLength").values).toEqual([null, null]);
     expect(getRow(rows, "focalLength").isIdentical).toBe(true);
+  });
+
+  it("derives a lens's equivalent specs from the camera it's actually being compared against, not an earlier mount match in the full catalog", () => {
+    // Same mount (sony-e), deliberately different sensors so a wrong pick
+    // is detectable: full-frame (~1.00x crop) vs. APS-C (~1.53x crop).
+    const comparedCamera: Camera = {
+      ...CAMERAS[0]!,
+      slug: "sony-a1",
+      sensor: { widthMm: 35.9, heightMm: 24 },
+    };
+    const earlierCatalogMatch: Camera = {
+      ...CAMERAS[0]!,
+      slug: "sony-a6700",
+      sensor: { widthMm: 23.5, heightMm: 15.6 },
+    };
+    const items: ComparisonItem[] = [
+      { type: "camera", ...comparedCamera },
+      { type: "lens", ...LENSES[0]! },
+    ];
+
+    const rows = buildComparisonRows(items, [
+      earlierCatalogMatch,
+      comparedCamera,
+    ]);
+
+    expect(getRow(rows, "cropFactor").values).toEqual(["1.00×", "1.00×"]);
+  });
+
+  it("falls back to an arbitrary mount match when no compared item is a camera", () => {
+    const items = resolve(["sony-fe-50mm-f1-8"]);
+    const rows = buildComparisonRows(items, CAMERAS);
+
+    expect(getRow(rows, "cropFactor").values).toEqual(["1.01×"]);
   });
 
   it("marks every row identical for a single item", () => {

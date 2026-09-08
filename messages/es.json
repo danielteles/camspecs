@@ -92,6 +92,7 @@
     "placeholder": "Buscar por marca o modelo…",
     "empty": "No se encontraron resultados.",
     "searching": "Buscando…",
+    "searchError": "Ocurrió un error al buscar. Inténtalo de nuevo.",
     "maxReached": "Puedes comparar hasta {max} elementos. Elimina uno para añadir otro.",
     "selectedLabel": "Elementos para comparar",
     "removeItem": "Quitar {item} de la comparación",
