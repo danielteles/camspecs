@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { CamerasCatalog } from "@/components/cameras-catalog";
+import { localeAlternates } from "@/i18n/alternates";
 import {
   parseCameraFilters,
   searchParamsFromRecord,
@@ -19,14 +20,7 @@ export async function generateMetadata({
   return {
     title: t("title"),
     description: t("description"),
-    alternates: {
-      canonical: `/${locale}/cameras`,
-      languages: {
-        en: "/en/cameras",
-        "pt-BR": "/pt-BR/cameras",
-        es: "/es/cameras",
-      },
-    },
+    alternates: localeAlternates(locale, "/cameras"),
   };
 }
 

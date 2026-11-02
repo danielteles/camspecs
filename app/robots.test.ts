@@ -39,7 +39,7 @@ describe("robots", () => {
   });
 
   it.each([
-    "/api/search?q=sony",
+    "/api/catalog",
     "/en/compare?items=sony-a7-iv,fujifilm-x-t5",
     "/pt-BR/cameras?mounts=sony-e",
     "/es/lenses?focalType=prime",

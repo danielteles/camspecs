@@ -6,6 +6,7 @@ import { Breadcrumb } from "@/components/breadcrumb";
 import { FieldOfViewVisualizer } from "@/components/field-of-view-visualizer";
 import { LastUpdatedBadge } from "@/components/last-updated-badge";
 import { Button } from "@/components/ui/button";
+import { localeAlternates } from "@/i18n/alternates";
 import { Link } from "@/i18n/navigation";
 import {
   buildComparisonRows,
@@ -70,14 +71,7 @@ export async function generateMetadata({
   return {
     title,
     description,
-    alternates: {
-      canonical: `/${locale}/lenses/${slug}`,
-      languages: {
-        en: `/en/lenses/${slug}`,
-        "pt-BR": `/pt-BR/lenses/${slug}`,
-        es: `/es/lenses/${slug}`,
-      },
-    },
+    alternates: localeAlternates(locale, `/lenses/${slug}`),
     openGraph: { title, description },
   };
 }

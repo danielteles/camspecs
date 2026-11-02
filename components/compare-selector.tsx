@@ -3,9 +3,10 @@
 import { useTranslations } from "next-intl";
 import { SearchIcon, XIcon } from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { useCompareTransition } from "@/components/compare-transition-provider";
+import { useSearchCatalog } from "@/components/use-search-catalog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,11 +28,17 @@ import {
   parseCompareItems,
   serializeCompareItems,
 } from "@/lib/compare-params";
-import type { CatalogItem } from "@/lib/search";
+import { searchCatalog, type CatalogItem } from "@/lib/search";
 
-const SEARCH_DEBOUNCE_MS = 200;
+const MAX_RESULTS = 8;
 
-export function CompareSelector() {
+export function CompareSelector({
+  initialItems,
+}: {
+  /** The URL's selected items, resolved on the server, so their chips
+   * render without loading the search catalog. */
+  initialItems: CatalogItem[];
+}) {
   const t = useTranslations("CompareSelector");
   const router = useRouter();
   const pathname = usePathname();
@@ -43,92 +50,27 @@ export function CompareSelector() {
     [searchParams],
   );
 
-  const [itemsBySlug, setItemsBySlug] = useState<Record<string, CatalogItem>>(
-    {},
-  );
+  // Items picked in this session, so a new chip shows immediately rather
+  // than after the server re-renders the page with it in initialItems.
+  const [pickedItems, setPickedItems] = useState<CatalogItem[]>([]);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<CatalogItem[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [hasError, setHasError] = useState(false);
-
-  const selectedItems = selectedSlugs
-    .map((slug) => itemsBySlug[slug])
-    .filter((item): item is CatalogItem => item !== undefined);
 
   const isMaxed = selectedSlugs.length >= MAX_COMPARE_ITEMS;
+  const { catalog, hasError } = useSearchCatalog(open && !isMaxed);
+  const isLoading = open && !isMaxed && !catalog && !hasError;
 
-  // Hydrate chip labels for slugs that arrived via the URL (direct load,
-  // back/forward navigation) and aren't already in the local cache.
-  useEffect(() => {
-    const missing = selectedSlugs.filter((slug) => !(slug in itemsBySlug));
-    if (missing.length === 0) {
-      return;
-    }
+  const itemsBySlug = new Map(
+    [...pickedItems, ...initialItems].map((item) => [item.slug, item]),
+  );
+  const selectedItems = selectedSlugs
+    .map((slug) => itemsBySlug.get(slug))
+    .filter((item): item is CatalogItem => item !== undefined);
 
-    const controller = new AbortController();
-
-    fetch(`/api/search?slugs=${encodeURIComponent(missing.join(","))}`, {
-      signal: controller.signal,
-    })
-      .then((res) => res.json())
-      .then((data: { results: CatalogItem[] }) => {
-        setItemsBySlug((prev) => {
-          const next = { ...prev };
-          for (const item of data.results) {
-            next[item.slug] = item;
-          }
-          return next;
-        });
-      })
-      .catch((error: unknown) => {
-        if (!(error instanceof DOMException && error.name === "AbortError")) {
-          console.error(
-            "[CompareSelector] failed to hydrate chip labels",
-            error,
-          );
-        }
-      });
-
-    return () => controller.abort();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- itemsBySlug is intentionally excluded to avoid refetching on every cache update
-  }, [selectedSlugs]);
-
-  // Debounced live search as the user types.
-  useEffect(() => {
-    if (!open || isMaxed) {
-      return;
-    }
-
-    const controller = new AbortController();
-
-    const timeoutId = setTimeout(() => {
-      setIsLoading(true);
-      setHasError(false);
-      fetch(`/api/search?q=${encodeURIComponent(query)}`, {
-        signal: controller.signal,
-      })
-        .then((res) => res.json())
-        .then((data: { results: CatalogItem[] }) => {
-          setResults(data.results);
-          setIsLoading(false);
-        })
-        .catch((error: unknown) => {
-          if (error instanceof DOMException && error.name === "AbortError") {
-            return;
-          }
-          console.error("[CompareSelector] search failed", error);
-          setResults([]);
-          setIsLoading(false);
-          setHasError(true);
-        });
-    }, SEARCH_DEBOUNCE_MS);
-
-    return () => {
-      clearTimeout(timeoutId);
-      controller.abort();
-    };
-  }, [query, open, isMaxed]);
+  const results = useMemo(
+    () => (catalog ? searchCatalog(catalog, query) : []),
+    [catalog, query],
+  );
 
   function updateSelection(nextSlugs: string[]) {
     // next-intl's query serializer stringifies every value it's given
@@ -152,7 +94,7 @@ export function CompareSelector() {
       return;
     }
 
-    setItemsBySlug((prev) => ({ ...prev, [item.slug]: item }));
+    setPickedItems((prev) => [...prev, item]);
     updateSelection([...selectedSlugs, item.slug]);
     setQuery("");
     setOpen(false);
@@ -162,9 +104,9 @@ export function CompareSelector() {
     updateSelection(selectedSlugs.filter((s) => s !== slug));
   }
 
-  const visibleResults = results.filter(
-    (item) => !selectedSlugs.includes(item.slug),
-  );
+  const visibleResults = results
+    .filter((item) => !selectedSlugs.includes(item.slug))
+    .slice(0, MAX_RESULTS);
 
   return (
     <div className="flex flex-col gap-3">

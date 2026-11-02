@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { LensesCatalog } from "@/components/lenses-catalog";
+import { localeAlternates } from "@/i18n/alternates";
 import { parseLensFilters, searchParamsFromRecord } from "@/lib/catalog-params";
 import { isDatabaseConfigured } from "@/lib/db/client";
 import { getAllLenses, getFilteredLenses } from "@/lib/services/equipment";
@@ -16,14 +17,7 @@ export async function generateMetadata({
   return {
     title: t("title"),
     description: t("description"),
-    alternates: {
-      canonical: `/${locale}/lenses`,
-      languages: {
-        en: "/en/lenses",
-        "pt-BR": "/pt-BR/lenses",
-        es: "/es/lenses",
-      },
-    },
+    alternates: localeAlternates(locale, "/lenses"),
   };
 }
 
