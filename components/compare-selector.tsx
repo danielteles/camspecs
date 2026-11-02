@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 import { SearchIcon, XIcon } from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useEffectEvent, useMemo, useState } from "react";
 
 import { useCompareTransition } from "@/components/compare-transition-provider";
 import { Badge } from "@/components/ui/badge";
@@ -27,9 +27,33 @@ import {
   parseCompareItems,
   serializeCompareItems,
 } from "@/lib/compare-params";
-import type { CatalogItem } from "@/lib/search";
+import { parseSearchResponse, type CatalogItem } from "@/lib/search";
 
 const SEARCH_DEBOUNCE_MS = 200;
+
+type SearchState =
+  | { status: "idle" | "loading" | "success"; results: CatalogItem[] }
+  | { status: "error" };
+
+/** Rejects on a non-2xx status or a body that isn't `{ results }`. */
+async function fetchCatalogItems(
+  url: string,
+  signal: AbortSignal,
+): Promise<CatalogItem[]> {
+  const response = await fetch(url, { signal });
+  if (!response.ok) {
+    throw new Error(`${url} answered ${response.status}`);
+  }
+  const results = parseSearchResponse(await response.json());
+  if (!results) {
+    throw new Error(`${url} answered an unexpected body`);
+  }
+  return results;
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof DOMException && error.name === "AbortError";
+}
 
 export function CompareSelector() {
   const t = useTranslations("CompareSelector");
@@ -48,9 +72,11 @@ export function CompareSelector() {
   );
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<CatalogItem[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [hasError, setHasError] = useState(false);
+  const [search, setSearch] = useState<SearchState>({
+    status: "idle",
+    results: [],
+  });
+  const results = search.status === "error" ? [] : search.results;
 
   const selectedItems = selectedSlugs
     .map((slug) => itemsBySlug[slug])
@@ -58,31 +84,37 @@ export function CompareSelector() {
 
   const isMaxed = selectedSlugs.length >= MAX_COMPARE_ITEMS;
 
+  // Read through an Effect Event so a cache update (which this effect
+  // itself causes) doesn't re-run it; only a URL change should.
+  const findUncachedSlugs = useEffectEvent(() =>
+    selectedSlugs.filter((slug) => !Object.hasOwn(itemsBySlug, slug)),
+  );
+
   // Hydrate chip labels for slugs that arrived via the URL (direct load,
   // back/forward navigation) and aren't already in the local cache.
   useEffect(() => {
-    const missing = selectedSlugs.filter((slug) => !(slug in itemsBySlug));
+    const missing = findUncachedSlugs();
     if (missing.length === 0) {
       return;
     }
 
     const controller = new AbortController();
 
-    fetch(`/api/search?slugs=${encodeURIComponent(missing.join(","))}`, {
-      signal: controller.signal,
-    })
-      .then((res) => res.json())
-      .then((data: { results: CatalogItem[] }) => {
+    fetchCatalogItems(
+      `/api/search?slugs=${encodeURIComponent(missing.join(","))}`,
+      controller.signal,
+    )
+      .then((items) => {
         setItemsBySlug((prev) => {
           const next = { ...prev };
-          for (const item of data.results) {
+          for (const item of items) {
             next[item.slug] = item;
           }
           return next;
         });
       })
       .catch((error: unknown) => {
-        if (!(error instanceof DOMException && error.name === "AbortError")) {
+        if (!isAbortError(error)) {
           console.error(
             "[CompareSelector] failed to hydrate chip labels",
             error,
@@ -91,7 +123,6 @@ export function CompareSelector() {
       });
 
     return () => controller.abort();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- itemsBySlug is intentionally excluded to avoid refetching on every cache update
   }, [selectedSlugs]);
 
   // Debounced live search as the user types.
@@ -103,24 +134,23 @@ export function CompareSelector() {
     const controller = new AbortController();
 
     const timeoutId = setTimeout(() => {
-      setIsLoading(true);
-      setHasError(false);
-      fetch(`/api/search?q=${encodeURIComponent(query)}`, {
-        signal: controller.signal,
-      })
-        .then((res) => res.json())
-        .then((data: { results: CatalogItem[] }) => {
-          setResults(data.results);
-          setIsLoading(false);
+      setSearch((prev) => ({
+        status: "loading",
+        results: prev.status === "error" ? [] : prev.results,
+      }));
+      fetchCatalogItems(
+        `/api/search?q=${encodeURIComponent(query)}`,
+        controller.signal,
+      )
+        .then((items) => {
+          setSearch({ status: "success", results: items });
         })
         .catch((error: unknown) => {
-          if (error instanceof DOMException && error.name === "AbortError") {
+          if (isAbortError(error)) {
             return;
           }
           console.error("[CompareSelector] search failed", error);
-          setResults([]);
-          setIsLoading(false);
-          setHasError(true);
+          setSearch({ status: "error" });
         });
     }, SEARCH_DEBOUNCE_MS);
 
@@ -187,15 +217,15 @@ export function CompareSelector() {
               value={query}
               onValueChange={setQuery}
               placeholder={t("placeholder")}
-              isLoading={isLoading}
+              isLoading={search.status === "loading"}
             />
             <CommandList>
               <CommandEmpty>
                 {isMaxed
                   ? t("maxReached", { max: MAX_COMPARE_ITEMS })
-                  : hasError
+                  : search.status === "error"
                     ? t("searchError")
-                    : isLoading
+                    : search.status === "loading"
                       ? t("searching")
                       : t("empty")}
               </CommandEmpty>

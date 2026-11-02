@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useCallback, useMemo, useState, useTransition } from "react";
 
 import { usePathname, useRouter } from "@/i18n/navigation";
 
@@ -51,21 +51,26 @@ export function useCatalogFilterUrlState<TFilters>({
     [searchParams, parseFilters],
   );
 
-  function updateFilters(next: TFilters) {
-    const nextQuery = serializeFilters(next);
-    const href =
-      Object.keys(nextQuery).length > 0
-        ? { pathname, query: nextQuery }
-        : { pathname };
-    startTransition(() => {
-      router.replace(href, { scroll: false });
-    });
-  }
+  // Stable across renders so the catalogs' memoized filter sections, which
+  // capture it in their onChange handlers, can list it as a dependency.
+  const updateFilters = useCallback(
+    (next: TFilters) => {
+      const nextQuery = serializeFilters(next);
+      const href =
+        Object.keys(nextQuery).length > 0
+          ? { pathname, query: nextQuery }
+          : { pathname };
+      startTransition(() => {
+        router.replace(href, { scroll: false });
+      });
+    },
+    [pathname, router, serializeFilters],
+  );
 
-  function resetAll() {
+  const resetAll = useCallback(() => {
     setQuery("");
     updateFilters(emptyFilters);
-  }
+  }, [emptyFilters, updateFilters]);
 
   return {
     filters,

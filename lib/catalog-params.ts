@@ -1,5 +1,5 @@
-import type { CameraFilters, LensFilters } from "./services/equipment";
-import type { MountId, SensorFormat } from "./types";
+import { isMountId } from "./mounts";
+import { isSensorFormat, type CameraFilters, type LensFilters } from "./types";
 
 /**
  * Converts Next.js's server-side `searchParams` shape (a plain object,
@@ -60,14 +60,18 @@ export function parseCameraFilters(params: URLSearchParams): CameraFilters {
     filters.brands = brands;
   }
 
+  // URLs are hand-editable and outlive the app's supported values, so
+  // anything unknown is dropped here rather than typed as a SensorFormat.
   const sensorFormats = parseList(
     params.get(CAMERA_PARAM_KEYS.sensorFormats),
-  ) as SensorFormat[];
+  ).filter(isSensorFormat);
   if (sensorFormats.length > 0) {
     filters.sensorFormats = sensorFormats;
   }
 
-  const mounts = parseList(params.get(CAMERA_PARAM_KEYS.mounts)) as MountId[];
+  const mounts = parseList(params.get(CAMERA_PARAM_KEYS.mounts)).filter(
+    isMountId,
+  );
   if (mounts.length > 0) {
     filters.mounts = mounts;
   }
@@ -135,7 +139,9 @@ export function parseLensFilters(params: URLSearchParams): LensFilters {
     filters.brands = brands;
   }
 
-  const mounts = parseList(params.get(LENS_PARAM_KEYS.mounts)) as MountId[];
+  const mounts = parseList(params.get(LENS_PARAM_KEYS.mounts)).filter(
+    isMountId,
+  );
   if (mounts.length > 0) {
     filters.mounts = mounts;
   }

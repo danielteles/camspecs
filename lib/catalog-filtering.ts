@@ -1,4 +1,4 @@
-import type { CameraFilters, LensFilters } from "./services/equipment";
+import type { CameraFilters, LensFilters } from "./types";
 import type { Camera, Lens } from "./types";
 
 /** Min/max of `values`, or `fallback` when there's nothing to measure

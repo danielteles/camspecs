@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
 
@@ -165,10 +165,55 @@ describe("CamerasCatalog", () => {
     render(<CamerasCatalog cameras={CAMERAS} allCameras={CAMERAS} />);
 
     expect(
-      screen.getAllByRole("link", { name: "View specs" })[0],
+      screen.getByRole("link", { name: "View specs, Sony Alpha 7 IV" }),
     ).toHaveAttribute("href", "/cameras/sony-a7-iv");
     expect(
-      screen.getAllByRole("link", { name: "Add to compare" })[0],
+      screen.getByRole("link", { name: "Add to compare, Sony Alpha 7 IV" }),
     ).toHaveAttribute("href", "/compare?items=sony-a7-iv");
+  });
+
+  it("renders instead of crashing when the URL names an unsupported mount or sensor format", () => {
+    mockUseSearchParams.mockReturnValue(
+      new URLSearchParams("mount=canon-ef&sensor=bogus"),
+    );
+
+    render(<CamerasCatalog cameras={CAMERAS} allCameras={CAMERAS} />);
+
+    expect(
+      screen.getByRole("heading", { name: "Sony Alpha 7 IV" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Remove .* filter/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("lists the cards under a Results heading, one list item per camera", () => {
+    render(<CamerasCatalog cameras={CAMERAS} allCameras={CAMERAS} />);
+
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Results" }),
+    ).toBeInTheDocument();
+    const list = screen.getByRole("list", { name: "Results" });
+    expect(within(list).getAllByRole("listitem")).toHaveLength(CAMERAS.length);
+  });
+
+  it("announces only the result count, not the whole grid, as the results change", async () => {
+    const user = userEvent.setup();
+    render(<CamerasCatalog cameras={CAMERAS} allCameras={CAMERAS} />);
+
+    const status = screen.getByRole("status");
+    expect(status).toHaveTextContent(`Results: ${CAMERAS.length}`);
+    expect(screen.getByRole("list", { name: "Results" })).not.toHaveAttribute(
+      "aria-live",
+    );
+
+    await user.type(
+      screen.getByRole("textbox", { name: "Search cameras" }),
+      "fuji",
+    );
+
+    // Same node, new text: a live region must already exist to be announced.
+    expect(screen.getByRole("status")).toBe(status);
+    expect(status).toHaveTextContent("Results: 1");
   });
 });

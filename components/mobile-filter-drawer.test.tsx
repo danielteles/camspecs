@@ -21,6 +21,7 @@ describe("MobileFilterDrawer", () => {
     render(
       <MobileFilterDrawer
         sections={[brandSection()]}
+        optionCountLabel={(count) => `${count} available`}
         activeCount={2}
         open={false}
         onOpenChange={vi.fn()}
@@ -41,6 +42,7 @@ describe("MobileFilterDrawer", () => {
     render(
       <MobileFilterDrawer
         sections={[brandSection()]}
+        optionCountLabel={(count) => `${count} available`}
         activeCount={0}
         open={false}
         onOpenChange={vi.fn()}
@@ -62,6 +64,7 @@ describe("MobileFilterDrawer", () => {
     render(
       <MobileFilterDrawer
         sections={[brandSection()]}
+        optionCountLabel={(count) => `${count} available`}
         activeCount={1}
         open
         onOpenChange={vi.fn()}
@@ -89,6 +92,7 @@ describe("MobileFilterDrawer", () => {
     render(
       <MobileFilterDrawer
         sections={[brandSection()]}
+        optionCountLabel={(count) => `${count} available`}
         activeCount={1}
         open
         onOpenChange={onOpenChange}
@@ -110,6 +114,7 @@ describe("MobileFilterDrawer", () => {
     render(
       <MobileFilterDrawer
         sections={[brandSection()]}
+        optionCountLabel={(count) => `${count} available`}
         activeCount={0}
         open
         onOpenChange={vi.fn()}

@@ -65,17 +65,17 @@ const LENS_ROW = {
 // lens fixture row, picked by the table the compiled SQL selects from.
 function createFixtureDb(): Kysely<Database> {
   const connection: DatabaseConnection = {
-    executeQuery: async (query) =>
-      ({
+    executeQuery: (query) =>
+      Promise.resolve({
         rows: [query.sql.includes('"cameras"') ? CAMERA_ROW : LENS_ROW],
-      }) as never,
+      } as never),
     streamQuery: () => {
       throw new Error("not supported");
     },
   };
   const driver: Driver = {
     init: async () => {},
-    acquireConnection: async () => connection,
+    acquireConnection: () => Promise.resolve(connection),
     beginTransaction: async () => {},
     commitTransaction: async () => {},
     rollbackTransaction: async () => {},

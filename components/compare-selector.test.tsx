@@ -133,4 +133,60 @@ describe("CompareSelector", () => {
     ).toBeInTheDocument();
     expect(screen.queryByText("Searching…")).not.toBeInTheDocument();
   });
+
+  it("shows the error state when the search API answers with an error status", async () => {
+    // A 5xx still has a JSON body, just not the { results } shape.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() =>
+        Promise.resolve(
+          Response.json({ error: "Internal Server Error" }, { status: 500 }),
+        ),
+      ),
+    );
+    const user = userEvent.setup();
+    renderCompareSelector();
+
+    await user.click(
+      screen.getByRole("button", { name: "Add a camera or lens…" }),
+    );
+    await user.type(
+      screen.getByPlaceholderText("Search by brand or model…"),
+      "sony",
+    );
+
+    expect(
+      await screen.findByText(
+        "Something went wrong searching. Try again.",
+        {},
+        { timeout: 2000 },
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps working when hydrating URL chips gets an error response", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() =>
+        Promise.resolve(
+          Response.json({ error: "Internal Server Error" }, { status: 500 }),
+        ),
+      ),
+    );
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    mockUseSearchParams.mockReturnValue(
+      new URLSearchParams("items=sony-a7-iv"),
+    );
+    const user = userEvent.setup();
+
+    renderCompareSelector();
+
+    await waitFor(() => expect(fetch).toHaveBeenCalled());
+    await user.click(
+      screen.getByRole("button", { name: "Add a camera or lens…" }),
+    );
+    expect(
+      screen.getByPlaceholderText("Search by brand or model…"),
+    ).toBeInTheDocument();
+  });
 });

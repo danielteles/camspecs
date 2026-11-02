@@ -6,7 +6,7 @@ type Messages = Record<string, MessageValue>;
 function getByPath(source: Messages, path: string): MessageValue | undefined {
   return path.split(".").reduce<MessageValue | undefined>((acc, segment) => {
     if (acc && typeof acc === "object" && segment in acc) {
-      return (acc as Messages)[segment];
+      return acc[segment];
     }
     return undefined;
   }, source);
@@ -32,7 +32,7 @@ function interpolate(
 export function createTranslator(namespace?: string) {
   return (key: string, values?: Record<string, string | number>) => {
     const fullPath = namespace ? `${namespace}.${key}` : key;
-    const value = getByPath(en as Messages, fullPath);
+    const value = getByPath(en, fullPath);
 
     if (typeof value !== "string") {
       throw new Error(`Missing mock translation for "${fullPath}"`);

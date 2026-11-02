@@ -7,6 +7,7 @@ import { CompareTableOverlay } from "@/components/compare-table-overlay";
 import { CompareTransitionProvider } from "@/components/compare-transition-provider";
 import { DiffToggle } from "@/components/diff-toggle";
 import { LastUpdatedBadge } from "@/components/last-updated-badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -107,7 +108,7 @@ export default async function ComparePage({
             aria-labelledby={`compare-card-${item.slug}`}
             className="border-border rounded-lg border p-4"
           >
-            <h3 className="text-base font-semibold">
+            <h2 className="text-base font-semibold">
               <Link
                 id={`compare-card-${item.slug}`}
                 href={`/${item.type === "camera" ? "cameras" : "lenses"}/${item.slug}`}
@@ -115,7 +116,7 @@ export default async function ComparePage({
               >
                 {item.brand} {item.model}
               </Link>
-            </h3>
+            </h2>
             <dl className="divide-border mt-3 divide-y">
               {rows.map((row) => (
                 <div
@@ -151,11 +152,13 @@ export default async function ComparePage({
       </div>
 
       <CompareTransitionProvider>
-        <Suspense>
+        {/* Both read useSearchParams, so they suspend until the URL is
+            known; the fallbacks hold their layout space meanwhile. */}
+        <Suspense fallback={<Skeleton className="h-8 w-full sm:w-80" />}>
           <CompareSelector />
         </Suspense>
 
-        <Suspense>
+        <Suspense fallback={<Skeleton className="h-7 w-32" />}>
           <CompareActions />
         </Suspense>
 

@@ -1,3 +1,4 @@
+import { isMountId } from "./mounts";
 import type { Camera, Lens, MountId } from "./types";
 
 export type CatalogItemType = "camera" | "lens";
@@ -63,4 +64,32 @@ export function resolveCatalogSlugs(
   return slugs
     .map((slug) => bySlug.get(slug))
     .filter((item): item is CatalogItem => item !== undefined);
+}
+
+function isCatalogItem(value: unknown): value is CatalogItem {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  const item = value as Record<string, unknown>;
+  return (
+    (item.type === "camera" || item.type === "lens") &&
+    typeof item.slug === "string" &&
+    typeof item.brand === "string" &&
+    typeof item.model === "string" &&
+    typeof item.mount === "string" &&
+    isMountId(item.mount)
+  );
+}
+
+/**
+ * Narrows an `/api/search` response body to its results, or `undefined`
+ * when the body isn't the `{ results }` shape (e.g. an error payload) —
+ * the client treats that as a failed request rather than trusting it.
+ */
+export function parseSearchResponse(data: unknown): CatalogItem[] | undefined {
+  if (typeof data !== "object" || data === null || !("results" in data)) {
+    return undefined;
+  }
+  const { results } = data;
+  return Array.isArray(results) ? results.filter(isCatalogItem) : undefined;
 }

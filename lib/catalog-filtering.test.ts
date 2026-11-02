@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { CameraFilters } from "@/lib/services/equipment";
+import type { CameraFilters } from "@/lib/types";
 import { CAMERAS, LENSES } from "@/test/mocks/equipment";
 
 import {

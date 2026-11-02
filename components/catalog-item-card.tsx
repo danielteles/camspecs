@@ -50,11 +50,20 @@ export function CatalogItemCard({
       </h3>
       <p className="text-muted-foreground text-sm">{meta}</p>
       <div className="mt-2 flex flex-col gap-2">
+        {/* The visually hidden title keeps each card's CTAs distinct in a
+            screen reader's links list, while the accessible name still
+            starts with the visible label (WCAG 2.5.3). */}
         <Button asChild size="sm" variant="outline">
-          <Link href={href}>{viewSpecsLabel}</Link>
+          <Link href={href}>
+            {viewSpecsLabel}
+            <span className="sr-only">, {title}</span>
+          </Link>
         </Button>
         <Button asChild size="sm">
-          <Link href={compareHref}>{addToCompareLabel}</Link>
+          <Link href={compareHref}>
+            {addToCompareLabel}
+            <span className="sr-only">, {title}</span>
+          </Link>
         </Button>
       </div>
     </div>

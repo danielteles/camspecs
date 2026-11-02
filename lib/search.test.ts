@@ -2,7 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import { CAMERAS, LENSES } from "@/test/mocks/equipment";
 
-import { buildCatalog, resolveCatalogSlugs, searchCatalog } from "./search";
+import {
+  buildCatalog,
+  parseSearchResponse,
+  resolveCatalogSlugs,
+  searchCatalog,
+} from "./search";
 
 const CATALOG = buildCatalog(CAMERAS, LENSES);
 const TOTAL_ITEMS = CAMERAS.length + LENSES.length;
@@ -79,5 +84,40 @@ describe("resolveCatalogSlugs", () => {
 
   it("returns an empty array for an empty input", () => {
     expect(resolveCatalogSlugs(CATALOG, [])).toEqual([]);
+  });
+});
+
+describe("parseSearchResponse", () => {
+  const sony = {
+    type: "camera",
+    slug: "sony-a7-iv",
+    brand: "Sony",
+    model: "Alpha 7 IV",
+    mount: "sony-e",
+  };
+
+  it("returns the results of a well-formed { results } body", () => {
+    expect(parseSearchResponse({ results: [sony] })).toEqual([sony]);
+  });
+
+  it("rejects a body without a results array, like an error payload", () => {
+    expect(parseSearchResponse({ error: "Internal Server Error" })).toBe(
+      undefined,
+    );
+    expect(parseSearchResponse(null)).toBe(undefined);
+    expect(parseSearchResponse({ results: "nope" })).toBe(undefined);
+  });
+
+  it("drops entries that aren't catalog items", () => {
+    expect(
+      parseSearchResponse({
+        results: [
+          sony,
+          { ...sony, type: "tripod" },
+          { ...sony, mount: "canon-ef" },
+          42,
+        ],
+      }),
+    ).toEqual([sony]);
   });
 });

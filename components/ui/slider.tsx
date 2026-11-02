@@ -7,8 +7,6 @@ import { cn } from "@/lib/utils";
 
 function Slider({
   className,
-  defaultValue,
-  value,
   min = 0,
   max = 100,
   thumbLabels,
@@ -17,13 +15,11 @@ function Slider({
   /** Accessible name for each thumb (role="slider"), matched by index. */
   thumbLabels?: string[];
 }) {
-  const values = value ?? defaultValue ?? [min, max];
+  const values = props.value ?? props.defaultValue ?? [min, max];
 
   return (
     <SliderPrimitive.Root
       data-slot="slider"
-      defaultValue={defaultValue}
-      value={value}
       min={min}
       max={max}
       className={cn(

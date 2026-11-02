@@ -23,8 +23,18 @@ export interface SensorDimensions {
   heightMm: number;
 }
 
-export type SensorFormat =
-  "full-frame" | "aps-c" | "micro-four-thirds" | "medium-format";
+export const SENSOR_FORMATS = [
+  "full-frame",
+  "aps-c",
+  "micro-four-thirds",
+  "medium-format",
+] as const;
+
+export type SensorFormat = (typeof SENSOR_FORMATS)[number];
+
+export function isSensorFormat(value: string): value is SensorFormat {
+  return (SENSOR_FORMATS as readonly string[]).includes(value);
+}
 
 export interface Camera {
   slug: string;
@@ -59,4 +69,29 @@ export interface Lens {
   releaseYear: number | null;
   /** When the ETL scraper pipeline last synced this record's specs. */
   updatedAt: Date;
+}
+
+// A filter field set to `undefined` means "not filtering on this", same as
+// leaving it out: the catalogs clear a filter by spreading `{ field:
+// undefined }`, and the serializers skip both alike.
+export interface CameraFilters {
+  brands?: string[];
+  sensorFormats?: SensorFormat[];
+  mounts?: MountId[];
+  /** Inclusive lower bound. */
+  minResolutionMp?: number | undefined;
+  /** Inclusive upper bound. Rows with a null weight_g never match. */
+  maxWeightG?: number | undefined;
+}
+
+export interface LensFilters {
+  brands?: string[];
+  mounts?: MountId[];
+  focalType?: "prime" | "zoom" | undefined;
+  /** Matches lenses whose focal range reaches at least this length. */
+  minFocalLength?: number | undefined;
+  /** Matches lenses whose focal range starts at or below this length. */
+  maxFocalLength?: number | undefined;
+  /** Inclusive upper bound on the f-number, e.g. 2.8 matches f/2.8 and faster. */
+  maxAperture?: number | undefined;
 }

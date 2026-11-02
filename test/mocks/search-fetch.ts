@@ -12,8 +12,11 @@ import { CAMERAS, LENSES } from "@/test/mocks/equipment";
 export function installSearchFetchMock() {
   const catalog = buildCatalog(CAMERAS, LENSES);
 
-  const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
-    const url = new URL(String(input), "http://localhost");
+  const fetchMock = vi.fn((input: RequestInfo | URL) => {
+    const url = new URL(
+      input instanceof Request ? input.url : input,
+      "http://localhost",
+    );
     const slugsParam = url.searchParams.get("slugs");
 
     const results =
@@ -27,10 +30,12 @@ export function installSearchFetchMock() {
           )
         : searchCatalog(catalog, url.searchParams.get("q") ?? "");
 
-    return new Response(JSON.stringify({ results }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
+    return Promise.resolve(
+      new Response(JSON.stringify({ results }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
   });
 
   vi.stubGlobal("fetch", fetchMock);
