@@ -3,9 +3,10 @@
 import { useTranslations } from "next-intl";
 import { SearchIcon, XIcon } from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useEffectEvent, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { useCompareTransition } from "@/components/compare-transition-provider";
+import { useSearchCatalog } from "@/components/use-search-catalog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,35 +28,17 @@ import {
   parseCompareItems,
   serializeCompareItems,
 } from "@/lib/compare-params";
-import { parseSearchResponse, type CatalogItem } from "@/lib/search";
+import { searchCatalog, type CatalogItem } from "@/lib/search";
 
-const SEARCH_DEBOUNCE_MS = 200;
+const MAX_RESULTS = 8;
 
-type SearchState =
-  | { status: "idle" | "loading" | "success"; results: CatalogItem[] }
-  | { status: "error" };
-
-/** Rejects on a non-2xx status or a body that isn't `{ results }`. */
-async function fetchCatalogItems(
-  url: string,
-  signal: AbortSignal,
-): Promise<CatalogItem[]> {
-  const response = await fetch(url, { signal });
-  if (!response.ok) {
-    throw new Error(`${url} answered ${response.status}`);
-  }
-  const results = parseSearchResponse(await response.json());
-  if (!results) {
-    throw new Error(`${url} answered an unexpected body`);
-  }
-  return results;
-}
-
-function isAbortError(error: unknown): boolean {
-  return error instanceof DOMException && error.name === "AbortError";
-}
-
-export function CompareSelector() {
+export function CompareSelector({
+  initialItems,
+}: {
+  /** The URL's selected items, resolved on the server, so their chips
+   * render without loading the search catalog. */
+  initialItems: CatalogItem[];
+}) {
   const t = useTranslations("CompareSelector");
   const router = useRouter();
   const pathname = usePathname();
@@ -67,98 +50,27 @@ export function CompareSelector() {
     [searchParams],
   );
 
-  const [itemsBySlug, setItemsBySlug] = useState<Record<string, CatalogItem>>(
-    {},
-  );
+  // Items picked in this session, so a new chip shows immediately rather
+  // than after the server re-renders the page with it in initialItems.
+  const [pickedItems, setPickedItems] = useState<CatalogItem[]>([]);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [search, setSearch] = useState<SearchState>({
-    status: "idle",
-    results: [],
-  });
-  const results = search.status === "error" ? [] : search.results;
-
-  const selectedItems = selectedSlugs
-    .map((slug) => itemsBySlug[slug])
-    .filter((item): item is CatalogItem => item !== undefined);
 
   const isMaxed = selectedSlugs.length >= MAX_COMPARE_ITEMS;
+  const { catalog, hasError } = useSearchCatalog(open && !isMaxed);
+  const isLoading = open && !isMaxed && !catalog && !hasError;
 
-  // Read through an Effect Event so a cache update (which this effect
-  // itself causes) doesn't re-run it; only a URL change should.
-  const findUncachedSlugs = useEffectEvent(() =>
-    selectedSlugs.filter((slug) => !Object.hasOwn(itemsBySlug, slug)),
+  const itemsBySlug = new Map(
+    [...pickedItems, ...initialItems].map((item) => [item.slug, item]),
   );
+  const selectedItems = selectedSlugs
+    .map((slug) => itemsBySlug.get(slug))
+    .filter((item): item is CatalogItem => item !== undefined);
 
-  // Hydrate chip labels for slugs that arrived via the URL (direct load,
-  // back/forward navigation) and aren't already in the local cache.
-  useEffect(() => {
-    const missing = findUncachedSlugs();
-    if (missing.length === 0) {
-      return;
-    }
-
-    const controller = new AbortController();
-
-    fetchCatalogItems(
-      `/api/search?slugs=${encodeURIComponent(missing.join(","))}`,
-      controller.signal,
-    )
-      .then((items) => {
-        setItemsBySlug((prev) => {
-          const next = { ...prev };
-          for (const item of items) {
-            next[item.slug] = item;
-          }
-          return next;
-        });
-      })
-      .catch((error: unknown) => {
-        if (!isAbortError(error)) {
-          console.error(
-            "[CompareSelector] failed to hydrate chip labels",
-            error,
-          );
-        }
-      });
-
-    return () => controller.abort();
-  }, [selectedSlugs]);
-
-  // Debounced live search as the user types.
-  useEffect(() => {
-    if (!open || isMaxed) {
-      return;
-    }
-
-    const controller = new AbortController();
-
-    const timeoutId = setTimeout(() => {
-      setSearch((prev) => ({
-        status: "loading",
-        results: prev.status === "error" ? [] : prev.results,
-      }));
-      fetchCatalogItems(
-        `/api/search?q=${encodeURIComponent(query)}`,
-        controller.signal,
-      )
-        .then((items) => {
-          setSearch({ status: "success", results: items });
-        })
-        .catch((error: unknown) => {
-          if (isAbortError(error)) {
-            return;
-          }
-          console.error("[CompareSelector] search failed", error);
-          setSearch({ status: "error" });
-        });
-    }, SEARCH_DEBOUNCE_MS);
-
-    return () => {
-      clearTimeout(timeoutId);
-      controller.abort();
-    };
-  }, [query, open, isMaxed]);
+  const results = useMemo(
+    () => (catalog ? searchCatalog(catalog, query) : []),
+    [catalog, query],
+  );
 
   function updateSelection(nextSlugs: string[]) {
     // next-intl's query serializer stringifies every value it's given
@@ -182,7 +94,7 @@ export function CompareSelector() {
       return;
     }
 
-    setItemsBySlug((prev) => ({ ...prev, [item.slug]: item }));
+    setPickedItems((prev) => [...prev, item]);
     updateSelection([...selectedSlugs, item.slug]);
     setQuery("");
     setOpen(false);
@@ -192,9 +104,9 @@ export function CompareSelector() {
     updateSelection(selectedSlugs.filter((s) => s !== slug));
   }
 
-  const visibleResults = results.filter(
-    (item) => !selectedSlugs.includes(item.slug),
-  );
+  const visibleResults = results
+    .filter((item) => !selectedSlugs.includes(item.slug))
+    .slice(0, MAX_RESULTS);
 
   return (
     <div className="flex flex-col gap-3">
@@ -217,15 +129,15 @@ export function CompareSelector() {
               value={query}
               onValueChange={setQuery}
               placeholder={t("placeholder")}
-              isLoading={search.status === "loading"}
+              isLoading={isLoading}
             />
             <CommandList>
               <CommandEmpty>
                 {isMaxed
                   ? t("maxReached", { max: MAX_COMPARE_ITEMS })
-                  : search.status === "error"
+                  : hasError
                     ? t("searchError")
-                    : search.status === "loading"
+                    : isLoading
                       ? t("searching")
                       : t("empty")}
               </CommandEmpty>

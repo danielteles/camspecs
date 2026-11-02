@@ -11,24 +11,20 @@ export interface CatalogItem {
   mount: MountId;
 }
 
+/** The search/chip fields of one camera or lens. */
+export function toCatalogItem(
+  type: CatalogItemType,
+  { slug, brand, model, mount }: Camera | Lens,
+): CatalogItem {
+  return { type, slug, brand, model, mount };
+}
+
 /** Flattens the camera and lens catalogs into the shape the compare
  * selector's search/resolve functions operate on. */
 export function buildCatalog(cameras: Camera[], lenses: Lens[]): CatalogItem[] {
   return [
-    ...cameras.map((camera): CatalogItem => ({
-      type: "camera",
-      slug: camera.slug,
-      brand: camera.brand,
-      model: camera.model,
-      mount: camera.mount,
-    })),
-    ...lenses.map((lens): CatalogItem => ({
-      type: "lens",
-      slug: lens.slug,
-      brand: lens.brand,
-      model: lens.model,
-      mount: lens.mount,
-    })),
+    ...cameras.map((camera) => toCatalogItem("camera", camera)),
+    ...lenses.map((lens) => toCatalogItem("lens", lens)),
   ];
 }
 
@@ -51,21 +47,6 @@ export function searchCatalog(
   );
 }
 
-/**
- * Resolves a list of slugs to their catalog items, preserving the order of
- * `slugs` and silently dropping any that don't match a known item.
- */
-export function resolveCatalogSlugs(
-  catalog: CatalogItem[],
-  slugs: string[],
-): CatalogItem[] {
-  const bySlug = new Map(catalog.map((item) => [item.slug, item]));
-
-  return slugs
-    .map((slug) => bySlug.get(slug))
-    .filter((item): item is CatalogItem => item !== undefined);
-}
-
 function isCatalogItem(value: unknown): value is CatalogItem {
   if (typeof value !== "object" || value === null) {
     return false;
@@ -82,14 +63,15 @@ function isCatalogItem(value: unknown): value is CatalogItem {
 }
 
 /**
- * Narrows an `/api/search` response body to its results, or `undefined`
- * when the body isn't the `{ results }` shape (e.g. an error payload) —
- * the client treats that as a failed request rather than trusting it.
+ * Narrows an `/api/catalog` response body to its items, or `undefined`
+ * when the body isn't the `{ items }` shape (e.g. an error payload or a
+ * stale cached response) — the client treats that as a failed load rather
+ * than trusting it.
  */
-export function parseSearchResponse(data: unknown): CatalogItem[] | undefined {
-  if (typeof data !== "object" || data === null || !("results" in data)) {
+export function parseCatalogResponse(data: unknown): CatalogItem[] | undefined {
+  if (typeof data !== "object" || data === null || !("items" in data)) {
     return undefined;
   }
-  const { results } = data;
-  return Array.isArray(results) ? results.filter(isCatalogItem) : undefined;
+  const { items } = data;
+  return Array.isArray(items) ? items.filter(isCatalogItem) : undefined;
 }

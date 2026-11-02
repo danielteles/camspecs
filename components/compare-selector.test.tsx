@@ -4,46 +4,52 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CompareSelector } from "@/components/compare-selector";
 import { CompareTransitionProvider } from "@/components/compare-transition-provider";
+import { buildCatalog, type CatalogItem } from "@/lib/search";
+import { installCatalogFetchMock } from "@/test/mocks/catalog-fetch";
+import { CAMERAS, LENSES } from "@/test/mocks/equipment";
 import {
   mockRouterReplace,
   mockUsePathname,
   mockUseSearchParams,
 } from "@/test/mocks/navigation";
-import { installSearchFetchMock } from "@/test/mocks/search-fetch";
 
-function renderCompareSelector() {
+const CATALOG = buildCatalog(CAMERAS, LENSES);
+const SONY_A7_IV = CATALOG.find((item) => item.slug === "sony-a7-iv");
+
+function renderCompareSelector(initialItems: CatalogItem[] = []) {
   return render(
     <CompareTransitionProvider>
-      <CompareSelector />
+      <CompareSelector initialItems={initialItems} />
     </CompareTransitionProvider>,
   );
 }
 
+async function openAndType(query: string) {
+  const user = userEvent.setup();
+  await user.click(
+    screen.getByRole("button", { name: "Add a camera or lens…" }),
+  );
+  await user.type(
+    screen.getByPlaceholderText("Search by brand or model…"),
+    query,
+  );
+  return user;
+}
+
 describe("CompareSelector", () => {
+  let fetchMock: ReturnType<typeof installCatalogFetchMock>;
+
   beforeEach(() => {
     mockUsePathname.mockReturnValue("/compare");
     mockUseSearchParams.mockReturnValue(new URLSearchParams());
-    installSearchFetchMock();
+    fetchMock = installCatalogFetchMock();
   });
 
   it("searches the catalog and adds the selected item to the comparison", async () => {
-    const user = userEvent.setup();
     renderCompareSelector();
+    const user = await openAndType("sony");
 
-    await user.click(
-      screen.getByRole("button", { name: "Add a camera or lens…" }),
-    );
-    await user.type(
-      screen.getByPlaceholderText("Search by brand or model…"),
-      "sony",
-    );
-
-    const option = await screen.findByText(
-      "Sony Alpha 7 IV",
-      {},
-      { timeout: 2000 },
-    );
-    await user.click(option);
+    await user.click(await screen.findByText("Sony Alpha 7 IV"));
 
     await waitFor(() =>
       expect(mockRouterReplace).toHaveBeenCalledWith(
@@ -53,19 +59,34 @@ describe("CompareSelector", () => {
     );
   });
 
-  it("renders a chip for each item already selected via the URL", async () => {
+  it("loads the catalog once and searches it locally on every keystroke", async () => {
+    renderCompareSelector();
+    const user = await openAndType("sony");
+    await screen.findByText("Sony Alpha 7 IV");
+
+    await user.clear(screen.getByPlaceholderText("Search by brand or model…"));
+    await user.type(
+      screen.getByPlaceholderText("Search by brand or model…"),
+      "x-t5",
+    );
+
+    expect(await screen.findByText("Fujifilm X-T5")).toBeInTheDocument();
+    expect(screen.queryByText("Sony Alpha 7 IV")).not.toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledWith("/api/catalog", expect.anything());
+  });
+
+  it("renders a chip for each item already selected via the URL without loading the catalog", () => {
     mockUseSearchParams.mockReturnValue(
       new URLSearchParams("items=sony-a7-iv"),
     );
 
-    renderCompareSelector();
+    renderCompareSelector(SONY_A7_IV ? [SONY_A7_IV] : []);
 
     expect(
-      await screen.findByText("Sony Alpha 7 IV", {}, { timeout: 2000 }),
-    ).toBeInTheDocument();
-    expect(
       screen.getByRole("list", { name: "Items to compare" }),
-    ).toBeInTheDocument();
+    ).toHaveTextContent("Sony Alpha 7 IV");
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("removes an item when its chip's remove button is clicked", async () => {
@@ -74,9 +95,8 @@ describe("CompareSelector", () => {
       new URLSearchParams("items=sony-a7-iv"),
     );
 
-    renderCompareSelector();
+    renderCompareSelector(SONY_A7_IV ? [SONY_A7_IV] : []);
 
-    await screen.findByText("Sony Alpha 7 IV", {}, { timeout: 2000 });
     await user.click(
       screen.getByRole("button", {
         name: "Remove Sony Alpha 7 IV from comparison",
@@ -92,101 +112,63 @@ describe("CompareSelector", () => {
   });
 
   it("shows an empty state when the search has no matches", async () => {
-    const user = userEvent.setup();
     renderCompareSelector();
+    await openAndType("nonexistent brand");
 
-    await user.click(
-      screen.getByRole("button", { name: "Add a camera or lens…" }),
-    );
-    await user.type(
-      screen.getByPlaceholderText("Search by brand or model…"),
-      "nonexistent brand",
-    );
-
-    expect(
-      await screen.findByText("No results found.", {}, { timeout: 2000 }),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("No results found.")).toBeInTheDocument();
   });
 
-  it("shows an error state and stops loading when the search request fails", async () => {
+  it("shows an error state and stops loading when the catalog fails to load", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
     vi.stubGlobal(
       "fetch",
       vi.fn(() => Promise.reject(new Error("network down"))),
     );
-    const user = userEvent.setup();
-    renderCompareSelector();
 
-    await user.click(
-      screen.getByRole("button", { name: "Add a camera or lens…" }),
-    );
-    await user.type(
-      screen.getByPlaceholderText("Search by brand or model…"),
-      "sony",
-    );
+    renderCompareSelector();
+    await openAndType("sony");
 
     expect(
-      await screen.findByText(
-        "Something went wrong searching. Try again.",
-        {},
-        { timeout: 2000 },
-      ),
+      await screen.findByText("Something went wrong searching. Try again."),
     ).toBeInTheDocument();
     expect(screen.queryByText("Searching…")).not.toBeInTheDocument();
   });
 
-  it("shows the error state when the search API answers with an error status", async () => {
-    // A 5xx still has a JSON body, just not the { results } shape.
+  it("shows the error state, not an endless spinner, when the catalog body isn't { items }", async () => {
+    // e.g. a cached response from the old /api/search ({ results }) shape.
+    vi.spyOn(console, "error").mockImplementation(() => {});
     vi.stubGlobal(
       "fetch",
-      vi.fn(() =>
-        Promise.resolve(
-          Response.json({ error: "Internal Server Error" }, { status: 500 }),
-        ),
-      ),
+      vi.fn(() => Promise.resolve(Response.json({ results: [] }))),
     );
-    const user = userEvent.setup();
-    renderCompareSelector();
 
-    await user.click(
-      screen.getByRole("button", { name: "Add a camera or lens…" }),
-    );
-    await user.type(
-      screen.getByPlaceholderText("Search by brand or model…"),
-      "sony",
-    );
+    renderCompareSelector();
+    await openAndType("sony");
 
     expect(
-      await screen.findByText(
-        "Something went wrong searching. Try again.",
-        {},
-        { timeout: 2000 },
-      ),
+      await screen.findByText("Something went wrong searching. Try again."),
     ).toBeInTheDocument();
+    expect(screen.queryByText("Searching…")).not.toBeInTheDocument();
   });
 
-  it("keeps working when hydrating URL chips gets an error response", async () => {
+  it("retries a failed catalog load when the popover is reopened", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
     vi.stubGlobal(
       "fetch",
-      vi.fn(() =>
-        Promise.resolve(
-          Response.json({ error: "Internal Server Error" }, { status: 500 }),
-        ),
-      ),
+      vi.fn(() => Promise.reject(new Error("network down"))),
     );
-    vi.spyOn(console, "error").mockImplementation(() => {});
-    mockUseSearchParams.mockReturnValue(
-      new URLSearchParams("items=sony-a7-iv"),
-    );
-    const user = userEvent.setup();
-
     renderCompareSelector();
+    const user = await openAndType("sony");
+    await screen.findByText("Something went wrong searching. Try again.");
 
-    await waitFor(() => expect(fetch).toHaveBeenCalled());
+    const retryFetch = installCatalogFetchMock();
+    await user.keyboard("{Escape}");
+    // The query survives closing the popover, so reopening re-runs it.
     await user.click(
       screen.getByRole("button", { name: "Add a camera or lens…" }),
     );
-    expect(
-      screen.getByPlaceholderText("Search by brand or model…"),
-    ).toBeInTheDocument();
+
+    expect(await screen.findByText("Sony Alpha 7 IV")).toBeInTheDocument();
+    expect(retryFetch).toHaveBeenCalledTimes(1);
   });
 });

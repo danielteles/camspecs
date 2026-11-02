@@ -25,6 +25,7 @@ import {
   type ComparisonRow,
 } from "@/lib/compare-data";
 import { COMPARE_ITEMS_PARAM, parseCompareItems } from "@/lib/compare-params";
+import { toCatalogItem } from "@/lib/search";
 import { getAllCameras, getAllLenses } from "@/lib/services/equipment";
 
 export default async function ComparePage({
@@ -155,7 +156,9 @@ export default async function ComparePage({
         {/* Both read useSearchParams, so they suspend until the URL is
             known; the fallbacks hold their layout space meanwhile. */}
         <Suspense fallback={<Skeleton className="h-8 w-full sm:w-80" />}>
-          <CompareSelector />
+          <CompareSelector
+            initialItems={items.map((item) => toCatalogItem(item.type, item))}
+          />
         </Suspense>
 
         <Suspense fallback={<Skeleton className="h-7 w-32" />}>

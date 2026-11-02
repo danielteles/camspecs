@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { LastUpdatedBadge } from "@/components/last-updated-badge";
 import { Button } from "@/components/ui/button";
+import { localeAlternates } from "@/i18n/alternates";
 import { Link } from "@/i18n/navigation";
 import {
   buildComparisonRows,
@@ -67,14 +68,7 @@ export async function generateMetadata({
   return {
     title,
     description,
-    alternates: {
-      canonical: `/${locale}/cameras/${slug}`,
-      languages: {
-        en: `/en/cameras/${slug}`,
-        "pt-BR": `/pt-BR/cameras/${slug}`,
-        es: `/es/cameras/${slug}`,
-      },
-    },
+    alternates: localeAlternates(locale, `/cameras/${slug}`),
     openGraph: { title, description },
   };
 }

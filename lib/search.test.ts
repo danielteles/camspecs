@@ -2,12 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { CAMERAS, LENSES } from "@/test/mocks/equipment";
 
-import {
-  buildCatalog,
-  parseSearchResponse,
-  resolveCatalogSlugs,
-  searchCatalog,
-} from "./search";
+import { buildCatalog, parseCatalogResponse, searchCatalog } from "./search";
 
 const CATALOG = buildCatalog(CAMERAS, LENSES);
 const TOTAL_ITEMS = CAMERAS.length + LENSES.length;
@@ -51,43 +46,7 @@ describe("searchCatalog", () => {
   });
 });
 
-describe("resolveCatalogSlugs", () => {
-  it("resolves known slugs to their catalog items", () => {
-    const results = resolveCatalogSlugs(CATALOG, [
-      "sony-a7-iv",
-      "fujifilm-x-t5",
-    ]);
-    expect(results.map((item) => item.slug)).toEqual([
-      "sony-a7-iv",
-      "fujifilm-x-t5",
-    ]);
-  });
-
-  it("preserves the requested order, independent of catalog order", () => {
-    const results = resolveCatalogSlugs(CATALOG, [
-      "fujifilm-x-t5",
-      "sony-a7-iv",
-    ]);
-    expect(results.map((item) => item.slug)).toEqual([
-      "fujifilm-x-t5",
-      "sony-a7-iv",
-    ]);
-  });
-
-  it("silently drops unknown slugs", () => {
-    const results = resolveCatalogSlugs(CATALOG, [
-      "sony-a7-iv",
-      "does-not-exist",
-    ]);
-    expect(results.map((item) => item.slug)).toEqual(["sony-a7-iv"]);
-  });
-
-  it("returns an empty array for an empty input", () => {
-    expect(resolveCatalogSlugs(CATALOG, [])).toEqual([]);
-  });
-});
-
-describe("parseSearchResponse", () => {
+describe("parseCatalogResponse", () => {
   const sony = {
     type: "camera",
     slug: "sony-a7-iv",
@@ -96,22 +55,20 @@ describe("parseSearchResponse", () => {
     mount: "sony-e",
   };
 
-  it("returns the results of a well-formed { results } body", () => {
-    expect(parseSearchResponse({ results: [sony] })).toEqual([sony]);
+  it("returns the items of a well-formed { items } body", () => {
+    expect(parseCatalogResponse({ items: [sony] })).toEqual([sony]);
   });
 
-  it("rejects a body without a results array, like an error payload", () => {
-    expect(parseSearchResponse({ error: "Internal Server Error" })).toBe(
-      undefined,
-    );
-    expect(parseSearchResponse(null)).toBe(undefined);
-    expect(parseSearchResponse({ results: "nope" })).toBe(undefined);
+  it("rejects a body without an items array", () => {
+    expect(parseCatalogResponse({ results: [sony] })).toBe(undefined);
+    expect(parseCatalogResponse(null)).toBe(undefined);
+    expect(parseCatalogResponse({ items: "nope" })).toBe(undefined);
   });
 
   it("drops entries that aren't catalog items", () => {
     expect(
-      parseSearchResponse({
-        results: [
+      parseCatalogResponse({
+        items: [
           sony,
           { ...sony, type: "tripod" },
           { ...sony, mount: "canon-ef" },

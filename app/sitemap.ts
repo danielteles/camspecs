@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 
+import { languageAlternates } from "@/i18n/alternates";
 import { routing } from "@/i18n/routing";
 import { isDatabaseConfigured } from "@/lib/db/client";
 import { getAllCameras, getAllLenses } from "@/lib/services/equipment";
@@ -20,11 +21,9 @@ function localizedEntries(
   path: string,
   lastModified?: Date,
 ): MetadataRoute.Sitemap {
-  const languages = Object.fromEntries(
-    routing.locales.map((locale) => [locale, `${SITE_URL}/${locale}${path}`]),
-  );
+  const languages = languageAlternates(path, SITE_URL);
   return routing.locales.map((locale) => ({
-    url: `${SITE_URL}/${locale}${path}`,
+    url: languages[locale],
     lastModified,
     alternates: { languages },
   }));

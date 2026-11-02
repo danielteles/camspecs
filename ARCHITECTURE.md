@@ -74,9 +74,9 @@ browser API.
   attribute change.
 
 - `CompareSelector` (`components/compare-selector.tsx`) is a Client
-  Component. It needs client state for the text input, a debounced fetch
-  to `/api/search`, and `useSearchParams` and `useRouter` to keep the URL
-  in sync.
+  Component. It needs client state for the text input, the search index
+  it loads from `/api/catalog`, and `useSearchParams` and `useRouter` to
+  keep the URL in sync.
 
   The URL, for example `?items=slug1,slug2`, is the actual state. There
   is no separate client store. As a result, a user can share the
@@ -249,11 +249,10 @@ pages and API routes, and against the fixed fixtures in
 `test/mocks/equipment.ts` in tests. This avoids ad hoc lookups spread
 across many pages.
 
-`lib/search.ts` holds `buildCatalog`, `searchCatalog`, and
-`resolveCatalogSlugs`. `buildCatalog` flattens the camera and lens arrays
-into one small index of brand, model, and mount. `/api/search` and the
-chips of the selector use `searchCatalog` and `resolveCatalogSlugs` on
-this index.
+`lib/search.ts` holds `toCatalogItem`, `buildCatalog`, and
+`searchCatalog`. `buildCatalog` flattens the camera and lens arrays into
+one small index of brand, model, and mount. `/api/catalog` serves this
+index, and the selector runs `searchCatalog` on it in the browser.
 
 `lib/compare-data.ts` holds two functions. `resolveComparisonItems` turns
 slugs into full records. `buildComparisonRows` turns records into a row
@@ -464,8 +463,8 @@ triggers a change.
 
 `CompareSelector`'s search combobox also shows its own spinner.
 `CommandInput` (`components/ui/command.tsx`) accepts an `isLoading`
-prop, and swaps its search icon for a spinner while the debounced
-`/api/search` fetch is in flight.
+prop, and swaps its search icon for a spinner while the search index
+from `/api/catalog` loads.
 
 ### Skeleton cards on page load
 
@@ -622,15 +621,23 @@ This method checks the math itself, not only the output of the code.
 
 ## Search and the compare selector
 
-`GET /api/search` is a plain Route Handler, outside the `[locale]`
-segment. API routes have no locale. The route supports two query
-parameters: `?q=` for a substring search, and `?slugs=` for an exact
-match on a list of slugs. A user can load a `/compare?items=...` URL
-directly, instead of building it through the UI. When this happens, the
-app uses `?slugs=` to fill in the comparison chips.
+`GET /api/catalog` is a static Route Handler (`force-static`), outside
+the `[locale]` segment. API routes have no locale. It serves the whole
+search index: about 700 items, roughly 9 KB gzipped. The route
+regenerates only when `/api/revalidate` calls `revalidateTag` after a
+scraper run, or after the 14-day `revalidate` backstop. A per-query search endpoint cached by
+the CDN could not be purged this way, so its results could trail a
+scraper run by up to a day.
 
-`CompareSelector` debounces the search query, and cancels stale requests
-with `AbortController`. It also limits the selection to 4 items. Two
+`CompareSelector` loads the index the first time its popover opens
+(`components/use-search-catalog.ts`). It keeps the index for the life of
+the component, so each keystroke searches locally with no request and no
+debounce. It shows the first 8 matches. If the load fails, the popover
+shows an error, and reopening it tries again. The chips need no request:
+the compare page already resolves the URL's `?items=` slugs on the
+server, and passes those items to the selector as `initialItems`.
+
+The selector also limits the selection to 4 items. Two
 layers enforce this limit. In the UI, the search list shows a "maximum
 reached" message once full. In `lib/compare-params.ts`, `parseCompareItems`
 removes duplicates and caps the list at 4, no matter what a hand-edited
