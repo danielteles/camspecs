@@ -9,8 +9,13 @@ import type { Lens } from "@/lib/types";
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: PageProps<"/[locale]/lenses">): Promise<Metadata> {
   const { locale } = await params;
+  // Each filter/sort combination is its own per-request render; keep them
+  // out of the index (robots.ts also disallows them) and leave only the
+  // canonical unfiltered listing.
+  const isFiltered = Object.keys(await searchParams).length > 0;
   const t = await getTranslations({ locale, namespace: "Catalog.lenses" });
 
   return {
@@ -24,6 +29,7 @@ export async function generateMetadata({
         es: "/es/lenses",
       },
     },
+    ...(isFiltered && { robots: { index: false, follow: true } }),
   };
 }
 

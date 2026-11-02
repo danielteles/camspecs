@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Suspense } from "react";
 
@@ -25,6 +26,16 @@ import {
 } from "@/lib/compare-data";
 import { COMPARE_ITEMS_PARAM, parseCompareItems } from "@/lib/compare-params";
 import { getAllCameras, getAllLenses } from "@/lib/services/equipment";
+
+// Every set of compared slugs is its own per-request render; keep them out
+// of the index (robots.ts also disallows them) and leave only the bare
+// /compare page.
+export async function generateMetadata({
+  searchParams,
+}: PageProps<"/[locale]/compare">): Promise<Metadata> {
+  const isComparing = (await searchParams)[COMPARE_ITEMS_PARAM] !== undefined;
+  return isComparing ? { robots: { index: false, follow: true } } : {};
+}
 
 export default async function ComparePage({
   params,
