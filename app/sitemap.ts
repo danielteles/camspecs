@@ -5,7 +5,13 @@ import { isDatabaseConfigured } from "@/lib/db/client";
 import { getAllCameras, getAllLenses } from "@/lib/services/equipment";
 import { SITE_URL } from "@/lib/site-config";
 
-const STATIC_PATHS = ["", "/cameras", "/lenses", "/compare"];
+const STATIC_PATHS = ["", "/cameras", "/lenses", "/compare"] as const;
+
+// Backstop for a missed on-demand revalidateTag call, and for a build that
+// ran without DATABASE_URL (which otherwise freezes a static-pages-only
+// sitemap until the next deploy) — see lib/services/equipment.ts's
+// EQUIPMENT_CACHE_REVALIDATE_SECONDS.
+export const revalidate = 1209600; // 14 days
 
 // One entry per locale, each listing every locale as an alternate, so
 // crawlers can reach every page without walking the filter/compare query

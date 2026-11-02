@@ -5,14 +5,12 @@ import { getAllCameras, getAllLenses } from "@/lib/services/equipment";
 
 const MAX_RESULTS = 8;
 
-// The autocomplete fires on every debounced keystroke, and results only
-// change when the scraper runs (roughly every two weeks). Letting the CDN
-// cache each ?q=/?slugs= response means repeated queries never reach a
-// function. The CDN isn't purged by /api/revalidate, so s-maxage is kept
-// short: after a scraper run, results are at most about an hour stale.
+// Results only change on scraper runs, so the CDN can answer repeated
+// queries. /api/revalidate doesn't purge it: a hot query is about an hour
+// stale at most, a rarely-typed one up to a day (stale-while-revalidate).
 const CACHE_HEADERS = {
   "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400",
-};
+} satisfies HeadersInit;
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;

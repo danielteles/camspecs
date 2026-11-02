@@ -733,11 +733,12 @@ open:
   Library now cover eleven components (see Testing above). The diff
   toggle, the FoV slider, and locale switching still have no automated
   coverage. There is no Playwright or other browser-driven suite.
-- The project needs a `sitemap.xml` file.
 - The project needs a dark-mode switch in the UI. The design system's
   tokens already support dark mode, but no control turns it on.
 - The project needs a production value for `NEXT_PUBLIC_SITE_URL`, in
-  `lib/site-config.ts`. This value defaults to `localhost` today.
+  `lib/site-config.ts`. This value defaults to `localhost` today. Until it
+  is set, `robots.txt` and `sitemap.xml` (`app/robots.ts`,
+  `app/sitemap.ts`) publish `localhost` URLs.
 - `tsconfig.json` enables every strict compiler flag except
   `exactOptionalPropertyTypes`. This flag is off on purpose, not by
   oversight. Some first-party types, for example `CameraFilters`,
