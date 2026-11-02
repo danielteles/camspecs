@@ -24,6 +24,7 @@ import {
   type ComparisonRow,
 } from "@/lib/compare-data";
 import { COMPARE_ITEMS_PARAM, parseCompareItems } from "@/lib/compare-params";
+import { toCatalogItem } from "@/lib/search";
 import { getAllCameras, getAllLenses } from "@/lib/services/equipment";
 
 export default async function ComparePage({
@@ -152,7 +153,9 @@ export default async function ComparePage({
 
       <CompareTransitionProvider>
         <Suspense>
-          <CompareSelector />
+          <CompareSelector
+            initialItems={items.map((item) => toCatalogItem(item.type, item))}
+          />
         </Suspense>
 
         <Suspense>
