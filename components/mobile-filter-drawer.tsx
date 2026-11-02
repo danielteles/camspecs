@@ -29,6 +29,7 @@ interface MobileFilterDrawerProps {
   /** Shows an inline spinner while a filter change is being applied. */
   isPending?: boolean;
   pendingLabel?: string;
+  optionCountLabel: (count: number) => string;
 }
 
 export function MobileFilterDrawer({
@@ -44,6 +45,7 @@ export function MobileFilterDrawer({
   applyLabel,
   isPending = false,
   pendingLabel,
+  optionCountLabel,
 }: MobileFilterDrawerProps) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -75,6 +77,7 @@ export function MobileFilterDrawer({
           idPrefix="mobile-"
           isPending={isPending}
           pendingLabel={pendingLabel}
+          optionCountLabel={optionCountLabel}
         />
         <div className="border-border sticky bottom-0 mt-auto flex items-center gap-2 border-t bg-inherit pt-4">
           <Button

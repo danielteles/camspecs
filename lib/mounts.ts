@@ -29,3 +29,12 @@ export const MOUNTS: Record<MountId, Mount> = {
   // matches Leica's well-documented 44mm M-mount bayonet spec.
   "leica-m": { id: "leica-m", name: "Leica M", flangeDistanceMm: 27.95 },
 };
+
+/**
+ * The one runtime check for a MountId. Anything from outside the type
+ * system (a DB column, a URL param) goes through this before it's used to
+ * index MOUNTS. `Object.hasOwn`, not `in`, so "toString" isn't a mount.
+ */
+export function isMountId(value: string): value is MountId {
+  return Object.hasOwn(MOUNTS, value);
+}

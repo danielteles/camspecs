@@ -134,6 +134,23 @@ describe("CompareSelector", () => {
     expect(screen.queryByText("Searching…")).not.toBeInTheDocument();
   });
 
+  it("shows the error state, not an endless spinner, when the catalog body isn't { items }", async () => {
+    // e.g. a cached response from the old /api/search ({ results }) shape.
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => Promise.resolve(Response.json({ results: [] }))),
+    );
+
+    renderCompareSelector();
+    await openAndType("sony");
+
+    expect(
+      await screen.findByText("Something went wrong searching. Try again."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Searching…")).not.toBeInTheDocument();
+  });
+
   it("retries a failed catalog load when the popover is reopened", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     vi.stubGlobal(

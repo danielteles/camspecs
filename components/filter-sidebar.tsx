@@ -60,15 +60,19 @@ interface FilterSidebarProps {
   /** Shows an inline spinner while a filter change is being applied. */
   isPending?: boolean;
   /** Text announced next to the spinner and to screen readers via aria-live. */
-  pendingLabel?: string;
+  pendingLabel?: string | undefined;
+  /** Localized screen-reader text for an option's count, e.g. "3 available". */
+  optionCountLabel: (count: number) => string;
 }
 
 function CheckboxSection({
   section,
   idPrefix,
+  optionCountLabel,
 }: {
   section: CheckboxFilterSection;
   idPrefix: string;
+  optionCountLabel: (count: number) => string;
 }) {
   const toggle = (value: string, checked: boolean) => {
     section.onChange(
@@ -107,7 +111,7 @@ function CheckboxSection({
                 {/* Screen readers otherwise concatenate the visible count
                     onto the label with no separator (e.g. "Sony1"), since
                     it's a sibling flex item rather than adjacent text. */}
-                <span className="sr-only">{`, ${option.count} available`}</span>
+                <span className="sr-only">{`, ${optionCountLabel(option.count)}`}</span>
               </span>
               <span
                 aria-hidden="true"
@@ -151,7 +155,7 @@ function RangeSection({ section }: { section: RangeFilterSection }) {
       <Slider
         min={section.min}
         max={section.max}
-        step={section.step}
+        step={section.step ?? 1}
         value={liveValue}
         onValueChange={setLiveValue}
         onValueCommit={section.onChange}
@@ -172,6 +176,7 @@ export function FilterSidebar({
   className,
   isPending = false,
   pendingLabel,
+  optionCountLabel,
 }: FilterSidebarProps) {
   return (
     <div className={className}>
@@ -199,7 +204,11 @@ export function FilterSidebar({
             <AccordionTrigger>{section.label}</AccordionTrigger>
             <AccordionContent>
               {section.type === "checkbox" ? (
-                <CheckboxSection section={section} idPrefix={idPrefix} />
+                <CheckboxSection
+                  section={section}
+                  idPrefix={idPrefix}
+                  optionCountLabel={optionCountLabel}
+                />
               ) : (
                 <RangeSection section={section} />
               )}

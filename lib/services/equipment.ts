@@ -1,9 +1,18 @@
+import "server-only";
+
 import type { Kysely, Selectable } from "kysely";
 import { unstable_cache } from "next/cache";
 
 import { getDb } from "@/lib/db/client";
 import type { CamerasTable, Database, LensesTable } from "@/lib/db/schema";
-import type { Camera, Lens, MountId, SensorFormat } from "@/lib/types";
+import { isMountId } from "@/lib/mounts";
+import {
+  isSensorFormat,
+  type Camera,
+  type CameraFilters,
+  type Lens,
+  type LensFilters,
+} from "@/lib/types";
 
 // Neon bills egress on every query that crosses its public network boundary,
 // and these two tables are read on nearly every request (listing pages, the
@@ -23,36 +32,10 @@ function reviveUpdatedAt<T extends { updatedAt: Date }>(item: T): T {
   return { ...item, updatedAt: new Date(item.updatedAt) };
 }
 
-// Re-derived from MountId rather than trusted from the DB column, which is
-// a plain String with no enum constraint of its own (see
-// scripts/scraper/db/schema.py) — this is the last line of defense against
-// an unsupported (e.g. legacy DSLR) mount reaching a user. See README.md's
-// "Architecture: supported mounts".
-const MOUNT_IDS: ReadonlySet<string> = new Set<MountId>([
-  "canon-rf",
-  "nikon-z",
-  "sony-e",
-  "fujifilm-x",
-  "fujifilm-g",
-  "micro-four-thirds",
-  "l-mount",
-  "leica-m",
-]);
-
-const SENSOR_FORMATS: ReadonlySet<string> = new Set<SensorFormat>([
-  "full-frame",
-  "aps-c",
-  "micro-four-thirds",
-  "medium-format",
-]);
-
-function isMountId(value: string): value is MountId {
-  return MOUNT_IDS.has(value);
-}
-
-function isSensorFormat(value: string): value is SensorFormat {
-  return SENSOR_FORMATS.has(value);
-}
+// The DB mount column is a plain String with no enum constraint of its own
+// (see scripts/scraper/db/schema.py), so isMountId is the last line of
+// defense against an unsupported (e.g. legacy DSLR) mount reaching a user.
+// See README.md's "Architecture: supported mounts".
 
 // A row is only excluded here for a field the frontend's Camera/Lens types
 // don't cover *at all* (a mount/sensor format outside the current unions)
@@ -122,16 +105,6 @@ function toLens(row: Selectable<LensesTable>): Lens | null {
     releaseYear: row.release_year,
     updatedAt: row.updated_at,
   };
-}
-
-export interface CameraFilters {
-  brands?: string[];
-  sensorFormats?: SensorFormat[];
-  mounts?: MountId[];
-  /** Inclusive lower bound. */
-  minResolutionMp?: number;
-  /** Inclusive upper bound. Rows with a null weight_g never match. */
-  maxWeightG?: number;
 }
 
 export type CameraSortKey = "brand" | "resolution" | "weight" | "release_date";
@@ -222,18 +195,6 @@ export async function getFilteredCameras(
 
 export async function getAllCameras(): Promise<Camera[]> {
   return getFilteredCameras();
-}
-
-export interface LensFilters {
-  brands?: string[];
-  mounts?: MountId[];
-  focalType?: "prime" | "zoom";
-  /** Matches lenses whose focal range reaches at least this length. */
-  minFocalLength?: number;
-  /** Matches lenses whose focal range starts at or below this length. */
-  maxFocalLength?: number;
-  /** Inclusive upper bound on the f-number, e.g. 2.8 matches f/2.8 and faster. */
-  maxAperture?: number;
 }
 
 export type LensSortKey =

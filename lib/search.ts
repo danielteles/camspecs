@@ -1,3 +1,4 @@
+import { isMountId } from "./mounts";
 import type { Camera, Lens, MountId } from "./types";
 
 export type CatalogItemType = "camera" | "lens";
@@ -44,4 +45,33 @@ export function searchCatalog(
   return catalog.filter((item) =>
     `${item.brand} ${item.model}`.toLowerCase().includes(normalized),
   );
+}
+
+function isCatalogItem(value: unknown): value is CatalogItem {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  const item = value as Record<string, unknown>;
+  return (
+    (item.type === "camera" || item.type === "lens") &&
+    typeof item.slug === "string" &&
+    typeof item.brand === "string" &&
+    typeof item.model === "string" &&
+    typeof item.mount === "string" &&
+    isMountId(item.mount)
+  );
+}
+
+/**
+ * Narrows an `/api/catalog` response body to its items, or `undefined`
+ * when the body isn't the `{ items }` shape (e.g. an error payload or a
+ * stale cached response) — the client treats that as a failed load rather
+ * than trusting it.
+ */
+export function parseCatalogResponse(data: unknown): CatalogItem[] | undefined {
+  if (typeof data !== "object" || data === null || !("items" in data)) {
+    return undefined;
+  }
+  const { items } = data;
+  return Array.isArray(items) ? items.filter(isCatalogItem) : undefined;
 }

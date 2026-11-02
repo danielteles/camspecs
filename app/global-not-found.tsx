@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
-import { createTranslator } from "next-intl";
+import { createTranslator, hasLocale } from "next-intl";
 import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
 import { cookies, headers } from "next/headers";
 
 import { Button } from "@/components/ui/button";
+import { loadMessages } from "@/i18n/messages";
 import { routing } from "@/i18n/routing";
 
 import "./globals.css";
@@ -27,11 +28,8 @@ const geistMono = Geist_Mono({
 async function resolveLocale() {
   const cookieStore = await cookies();
   const cookieLocale = cookieStore.get("NEXT_LOCALE")?.value;
-  if (
-    cookieLocale &&
-    routing.locales.includes(cookieLocale as (typeof routing.locales)[number])
-  ) {
-    return cookieLocale as (typeof routing.locales)[number];
+  if (hasLocale(routing.locales, cookieLocale)) {
+    return cookieLocale;
   }
 
   const headerList = await headers();
@@ -54,7 +52,7 @@ export const metadata: Metadata = {
 
 export default async function GlobalNotFound() {
   const locale = await resolveLocale();
-  const messages = (await import(`../messages/${locale}.json`)).default;
+  const messages = await loadMessages(locale);
   const t = createTranslator({ locale, messages, namespace: "NotFound" });
 
   return (

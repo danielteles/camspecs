@@ -73,7 +73,9 @@
       "maxApertureChip": "ƒ/{value} o más rápido",
       "noResults": "Ningún lente coincide con los criterios seleccionados.",
       "loadingLabel": "Cargando lentes…"
-    }
+    },
+    "resultsHeading": "Resultados",
+    "resultCount": "Resultados: {count}"
   },
   "Filters": {
     "title": "Filtros",
@@ -84,7 +86,8 @@
     "removeFilter": "Quitar filtro {label}",
     "activeFiltersLabel": "Filtros activos",
     "applyLabel": "Mostrar {count} resultados",
-    "updatingLabel": "Actualizando resultados…"
+    "updatingLabel": "Actualizando resultados…",
+    "optionCount": "{count} disponibles"
   },
   "CompareSelector": {
     "triggerLabel": "Añadir una cámara o lente…",
@@ -194,5 +197,11 @@
       "sensorFormat": "Formato del sensor",
       "megapixels": "Megapíxeles"
     }
+  },
+  "ErrorPage": {
+    "title": "Algo salió mal",
+    "description": "No se pudo cargar esta página. Inténtalo de nuevo o vuelve a la página de inicio.",
+    "retry": "Intentar de nuevo",
+    "homeLink": "Ir a la página de inicio"
   }
 }

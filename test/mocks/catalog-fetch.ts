@@ -9,8 +9,8 @@ import { CAMERAS, LENSES } from "@/test/mocks/equipment";
  * payload the actual route returns, without a Next.js server or database.
  */
 export function installCatalogFetchMock() {
-  const fetchMock = vi.fn(async () =>
-    Response.json({ items: buildCatalog(CAMERAS, LENSES) }),
+  const fetchMock = vi.fn(() =>
+    Promise.resolve(Response.json({ items: buildCatalog(CAMERAS, LENSES) })),
   );
 
   vi.stubGlobal("fetch", fetchMock);

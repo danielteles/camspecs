@@ -1,11 +1,20 @@
+import { createHash, timingSafeEqual } from "node:crypto";
+
 import { revalidatePath, revalidateTag } from "next/cache";
 import type { NextRequest } from "next/server";
 
 import { routing } from "@/i18n/routing";
 
-interface RevalidateRequestBody {
-  cameras?: unknown;
-  lenses?: unknown;
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+// Hashing first gives timingSafeEqual the equal-length inputs it requires,
+// so neither the comparison time nor an early length check leaks how much
+// of the secret a guess got right.
+function isSameSecret(provided: string, secret: string): boolean {
+  const digest = (value: string) => createHash("sha256").update(value).digest();
+  return timingSafeEqual(digest(provided), digest(secret));
 }
 
 function toSlugList(value: unknown): string[] {
@@ -18,8 +27,8 @@ function toSlugList(value: unknown): string[] {
 }
 
 // Called by the scraper pipeline (scripts/scraper/) after it upserts new or
-// changed camera/lens rows, so the 1-hour ISR window (see `revalidate` in
-// the [slug] pages) doesn't leave stale data up for up to an hour.
+// changed camera/lens rows, so the 14-day ISR window (see `revalidate` in
+// the [slug] pages) doesn't leave stale data up until it expires.
 export async function POST(request: NextRequest) {
   const secret = process.env.REVALIDATION_SECRET;
   if (!secret) {
@@ -33,15 +42,21 @@ export async function POST(request: NextRequest) {
   const provided = authHeader?.startsWith("Bearer ")
     ? authHeader.slice("Bearer ".length)
     : null;
-  if (provided !== secret) {
+  if (provided === null || !isSameSecret(provided, secret)) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  let body: RevalidateRequestBody;
+  let body: unknown;
   try {
     body = await request.json();
   } catch {
     return Response.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+  if (!isRecord(body)) {
+    return Response.json(
+      { error: "Body must be a JSON object" },
+      { status: 400 },
+    );
   }
 
   const cameraSlugs = toSlugList(body.cameras);

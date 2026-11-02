@@ -20,7 +20,7 @@ if (typeof window.ResizeObserver === "undefined") {
     observe() {}
     unobserve() {}
     disconnect() {}
-  } as unknown as typeof ResizeObserver;
+  };
 }
 
 if (typeof window.matchMedia === "undefined") {
@@ -78,20 +78,21 @@ vi.mock("next-intl", () => ({
 // next-intl/server: same translator, wrapped as the async API server
 // components use.
 vi.mock("next-intl/server", () => ({
-  getTranslations: async (
+  getTranslations: (
     options?: string | { namespace?: string; locale?: string },
   ) => {
     const namespace =
       typeof options === "string" ? options : options?.namespace;
-    return createTranslator(namespace);
+    return Promise.resolve(createTranslator(namespace));
   },
   // Mirrors createTranslator's "always resolve against en.json" behavior:
   // formats with the "en" locale regardless of what the real request would
   // resolve, since tests don't run inside a Next.js request context.
-  getFormatter: async () => ({
-    dateTime: (date: Date, options?: Intl.DateTimeFormatOptions) =>
-      new Intl.DateTimeFormat("en", options).format(date),
-  }),
+  getFormatter: () =>
+    Promise.resolve({
+      dateTime: (date: Date, options?: Intl.DateTimeFormatOptions) =>
+        new Intl.DateTimeFormat("en", options).format(date),
+    }),
   setRequestLocale: vi.fn(),
 }));
 
@@ -158,14 +159,13 @@ vi.mock("@/lib/db/client", () => ({
 // have no live database, so it resolves from the same fixtures other tests
 // use instead of opening a real connection.
 vi.mock("@/lib/services/equipment", () => ({
-  getAllCameras: vi.fn(async () => CAMERAS),
-  getAllLenses: vi.fn(async () => LENSES),
-  getCameraBySlug: vi.fn(
-    async (slug: string) =>
-      CAMERAS.find((camera) => camera.slug === slug) ?? null,
+  getAllCameras: vi.fn(() => Promise.resolve(CAMERAS)),
+  getAllLenses: vi.fn(() => Promise.resolve(LENSES)),
+  getCameraBySlug: vi.fn((slug: string) =>
+    Promise.resolve(CAMERAS.find((camera) => camera.slug === slug) ?? null),
   ),
-  getLensBySlug: vi.fn(
-    async (slug: string) => LENSES.find((lens) => lens.slug === slug) ?? null,
+  getLensBySlug: vi.fn((slug: string) =>
+    Promise.resolve(LENSES.find((lens) => lens.slug === slug) ?? null),
   ),
 }));
 

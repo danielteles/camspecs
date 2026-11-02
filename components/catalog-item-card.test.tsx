@@ -48,13 +48,30 @@ describe("CatalogItemCard", () => {
   it("links both CTAs to their own destination", () => {
     render(<CatalogItemCard {...baseProps} />);
 
-    expect(screen.getByRole("link", { name: "View specs" })).toHaveAttribute(
-      "href",
-      "/cameras/sony-a7-iv",
-    );
     expect(
-      screen.getByRole("link", { name: "Add to compare" }),
+      screen.getByRole("link", { name: "View specs, Sony Alpha 7 IV" }),
+    ).toHaveAttribute("href", "/cameras/sony-a7-iv");
+    expect(
+      screen.getByRole("link", { name: "Add to compare, Sony Alpha 7 IV" }),
     ).toHaveAttribute("href", "/compare?items=sony-a7-iv");
+  });
+
+  it("names each CTA after its item so links stay distinct out of context", () => {
+    // Screen-reader link lists show every card's CTAs together; a bare
+    // "View specs" repeated per card is indistinguishable there.
+    render(
+      <>
+        <CatalogItemCard {...baseProps} />
+        <CatalogItemCard
+          {...baseProps}
+          href="/cameras/fujifilm-x-t5"
+          title="Fujifilm X-T5"
+        />
+      </>,
+    );
+
+    const names = screen.getAllByRole("link").map((link) => link.textContent);
+    expect(new Set(names).size).toBe(names.length);
   });
 
   it("stacks the two CTAs full-width instead of splitting them side by side", () => {
@@ -64,7 +81,9 @@ describe("CatalogItemCard", () => {
     // full-width removes that failure mode regardless of label length.
     render(<CatalogItemCard {...baseProps} />);
 
-    const viewSpecsLink = screen.getByRole("link", { name: "View specs" });
+    const viewSpecsLink = screen.getByRole("link", {
+      name: "View specs, Sony Alpha 7 IV",
+    });
     const ctaRow = viewSpecsLink.closest("div");
 
     expect(ctaRow).toHaveClass("flex-col");

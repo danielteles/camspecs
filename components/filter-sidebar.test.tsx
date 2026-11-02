@@ -8,6 +8,8 @@ import type {
 } from "@/components/filter-sidebar";
 import { FilterSidebar } from "@/components/filter-sidebar";
 
+const optionCountLabel = (count: number) => `${count} available`;
+
 function brandSection(
   overrides: Partial<CheckboxFilterSection> = {},
 ): CheckboxFilterSection {
@@ -71,7 +73,12 @@ function getSliderRoot() {
 
 describe("FilterSidebar", () => {
   it("renders every section as an accordion trigger", () => {
-    render(<FilterSidebar sections={[brandSection(), resolutionSection()]} />);
+    render(
+      <FilterSidebar
+        optionCountLabel={optionCountLabel}
+        sections={[brandSection(), resolutionSection()]}
+      />,
+    );
 
     expect(screen.getByRole("button", { name: "Brand" })).toBeInTheDocument();
     expect(
@@ -80,7 +87,12 @@ describe("FilterSidebar", () => {
   });
 
   it("renders each checkbox option with its label and count", () => {
-    render(<FilterSidebar sections={[brandSection()]} />);
+    render(
+      <FilterSidebar
+        optionCountLabel={optionCountLabel}
+        sections={[brandSection()]}
+      />,
+    );
 
     expect(screen.getByRole("checkbox", { name: /Sony/ })).toBeInTheDocument();
     expect(screen.getByText("3")).toBeInTheDocument();
@@ -89,11 +101,25 @@ describe("FilterSidebar", () => {
     ).toBeInTheDocument();
   });
 
+  it("reads each option's count to screen readers through the localized label it's given", () => {
+    render(
+      <FilterSidebar
+        sections={[brandSection()]}
+        optionCountLabel={(count) => `${count} disponíveis`}
+      />,
+    );
+
+    expect(
+      screen.getByRole("checkbox", { name: "Sony, 3 disponíveis" }),
+    ).toBeInTheDocument();
+  });
+
   it("calls onChange with the value added when an unchecked option is clicked", async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
     render(
       <FilterSidebar
+        optionCountLabel={optionCountLabel}
         sections={[brandSection({ selected: ["sony"], onChange })]}
       />,
     );
@@ -108,6 +134,7 @@ describe("FilterSidebar", () => {
     const onChange = vi.fn();
     render(
       <FilterSidebar
+        optionCountLabel={optionCountLabel}
         sections={[brandSection({ selected: ["sony", "fujifilm"], onChange })]}
       />,
     );
@@ -118,21 +145,34 @@ describe("FilterSidebar", () => {
   });
 
   it("disables a zero-count option that isn't selected", () => {
-    render(<FilterSidebar sections={[brandSection()]} />);
+    render(
+      <FilterSidebar
+        optionCountLabel={optionCountLabel}
+        sections={[brandSection()]}
+      />,
+    );
 
     expect(screen.getByRole("checkbox", { name: /Canon/ })).toBeDisabled();
   });
 
   it("keeps a zero-count option enabled if it's already selected", () => {
     render(
-      <FilterSidebar sections={[brandSection({ selected: ["canon"] })]} />,
+      <FilterSidebar
+        optionCountLabel={optionCountLabel}
+        sections={[brandSection({ selected: ["canon"] })]}
+      />,
     );
 
     expect(screen.getByRole("checkbox", { name: /Canon/ })).toBeEnabled();
   });
 
   it("renders a range section's current value and slider bounds", () => {
-    render(<FilterSidebar sections={[resolutionSection()]} />);
+    render(
+      <FilterSidebar
+        optionCountLabel={optionCountLabel}
+        sections={[resolutionSection()]}
+      />,
+    );
 
     expect(screen.getByText("24 MP")).toBeInTheDocument();
     expect(screen.getByText("12 MP")).toBeInTheDocument();
@@ -145,6 +185,7 @@ describe("FilterSidebar", () => {
   it("labels each thumb of a two-sided range independently", () => {
     render(
       <FilterSidebar
+        optionCountLabel={optionCountLabel}
         sections={[
           resolutionSection({
             id: "focal-length",
@@ -170,6 +211,7 @@ describe("FilterSidebar", () => {
     const onChange = vi.fn();
     render(
       <FilterSidebar
+        optionCountLabel={optionCountLabel}
         sections={[
           resolutionSection({ min: 0, max: 100, value: [0], onChange }),
         ]}
@@ -199,6 +241,7 @@ describe("FilterSidebar", () => {
     const onChange = vi.fn();
     render(
       <FilterSidebar
+        optionCountLabel={optionCountLabel}
         sections={[
           resolutionSection({ min: 0, max: 100, value: [0], onChange }),
         ]}
@@ -226,6 +269,7 @@ describe("FilterSidebar", () => {
     const onChange = vi.fn();
     const { rerender } = render(
       <FilterSidebar
+        optionCountLabel={optionCountLabel}
         sections={[
           resolutionSection({ min: 0, max: 100, value: [0], onChange }),
         ]}
@@ -245,6 +289,7 @@ describe("FilterSidebar", () => {
     // reference, but nothing this slider's value actually changed.
     rerender(
       <FilterSidebar
+        optionCountLabel={optionCountLabel}
         sections={[
           resolutionSection({ min: 0, max: 100, value: [0], onChange }),
         ]}
@@ -256,7 +301,13 @@ describe("FilterSidebar", () => {
   });
 
   it("prefixes checkbox ids so two instances can render at once without collisions", () => {
-    render(<FilterSidebar sections={[brandSection()]} idPrefix="mobile-" />);
+    render(
+      <FilterSidebar
+        optionCountLabel={optionCountLabel}
+        sections={[brandSection()]}
+        idPrefix="mobile-"
+      />,
+    );
 
     expect(screen.getByRole("checkbox", { name: /Sony/ })).toHaveAttribute(
       "id",

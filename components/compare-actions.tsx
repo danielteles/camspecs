@@ -76,7 +76,7 @@ export function CompareActions() {
         type="button"
         variant="outline"
         size="sm"
-        onClick={handleCopyLink}
+        onClick={() => void handleCopyLink()}
       >
         {copied ? <CheckIcon aria-hidden /> : <CopyIcon aria-hidden />}
         {copied ? t("copiedLabel") : t("copyLinkCta")}

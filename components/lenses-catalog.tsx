@@ -2,7 +2,7 @@
 
 import { SearchIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useMemo } from "react";
+import { useId, useMemo } from "react";
 
 import {
   ActiveFilterBadges,
@@ -25,9 +25,8 @@ import {
   lensMatchesFilters,
 } from "@/lib/catalog-filtering";
 import { formatAperture, formatFocalLengthRange } from "@/lib/compare-data";
-import { MOUNTS } from "@/lib/mounts";
-import type { LensFilters } from "@/lib/services/equipment";
-import type { Lens, MountId } from "@/lib/types";
+import { isMountId, MOUNTS } from "@/lib/mounts";
+import type { Lens, LensFilters } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 interface LensesCatalogProps {
@@ -43,6 +42,9 @@ export function LensesCatalog({ lenses, allLenses }: LensesCatalogProps) {
   const tCatalog = useTranslations("Catalog");
   const tLenses = useTranslations("Catalog.lenses");
   const tFilters = useTranslations("Filters");
+  const resultsHeadingId = useId();
+  const optionCountLabel = (count: number) =>
+    tFilters("optionCount", { count });
 
   const {
     filters,
@@ -143,7 +145,7 @@ export function LensesCatalog({ lenses, allLenses }: LensesCatalogProps) {
         options: mountOptions,
         selected: filters.mounts ?? [],
         onChange: (selected) =>
-          updateFilters({ ...filters, mounts: selected as MountId[] }),
+          updateFilters({ ...filters, mounts: selected.filter(isMountId) }),
       },
       {
         type: "checkbox",
@@ -199,8 +201,14 @@ export function LensesCatalog({ lenses, allLenses }: LensesCatalogProps) {
         formatValue: (value) => formatAperture(value),
       },
     ];
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- updateFilters closes over filters/pathname/router, which are already covered by their own deps
-  }, [allLenses, filters, focalLengthBounds, apertureBounds, tLenses]);
+  }, [
+    allLenses,
+    filters,
+    focalLengthBounds,
+    apertureBounds,
+    tLenses,
+    updateFilters,
+  ]);
 
   const activeChips: ActiveFilterChip[] = useMemo(() => {
     const chips: ActiveFilterChip[] = [];
@@ -261,8 +269,7 @@ export function LensesCatalog({ lenses, allLenses }: LensesCatalogProps) {
     }
 
     return chips;
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- updateFilters closes over filters/pathname/router, which are already covered by their own deps
-  }, [filters, focalLengthBounds, tLenses]);
+  }, [filters, focalLengthBounds, tLenses, updateFilters]);
 
   const displayedLenses = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -306,6 +313,7 @@ export function LensesCatalog({ lenses, allLenses }: LensesCatalogProps) {
             })}
             isPending={isPending}
             pendingLabel={tFilters("updatingLabel")}
+            optionCountLabel={optionCountLabel}
           />
         </div>
       </div>
@@ -325,6 +333,7 @@ export function LensesCatalog({ lenses, allLenses }: LensesCatalogProps) {
             idPrefix="desktop-"
             isPending={isPending}
             pendingLabel={tFilters("updatingLabel")}
+            optionCountLabel={optionCountLabel}
           />
         </aside>
 
@@ -334,8 +343,16 @@ export function LensesCatalog({ lenses, allLenses }: LensesCatalogProps) {
             isPending && "pointer-events-none opacity-50",
           )}
           aria-busy={isPending}
-          aria-live="polite"
         >
+          <h2 id={resultsHeadingId} className="sr-only">
+            {tCatalog("resultsHeading")}
+          </h2>
+          {/* Announces just the count; the region stays mounted so screen
+              readers pick up its text change (a live region on the grid
+              itself would read every card out on each filter change). */}
+          <p role="status" className="sr-only">
+            {tCatalog("resultCount", { count: displayedLenses.length })}
+          </p>
           {displayedLenses.length === 0 ? (
             <div className="flex flex-col items-start gap-3">
               <p className="text-muted-foreground text-base">
@@ -348,20 +365,24 @@ export function LensesCatalog({ lenses, allLenses }: LensesCatalogProps) {
               )}
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <ul
+              aria-labelledby={resultsHeadingId}
+              className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+            >
               {displayedLenses.map((lens) => (
-                <CatalogItemCard
-                  key={lens.slug}
-                  href={`/lenses/${lens.slug}`}
-                  compareHref={`/compare?items=${lens.slug}`}
-                  eyebrow={MOUNTS[lens.mount].name}
-                  title={`${lens.brand} ${lens.model}`}
-                  meta={`${formatFocalLengthRange(lens.minFocalLengthMm, lens.maxFocalLengthMm)} · ${formatAperture(lens.maxAperture)}`}
-                  viewSpecsLabel={tCatalog("viewSpecsCta")}
-                  addToCompareLabel={tCatalog("addToCompareCta")}
-                />
+                <li key={lens.slug}>
+                  <CatalogItemCard
+                    href={`/lenses/${lens.slug}`}
+                    compareHref={`/compare?items=${lens.slug}`}
+                    eyebrow={MOUNTS[lens.mount].name}
+                    title={`${lens.brand} ${lens.model}`}
+                    meta={`${formatFocalLengthRange(lens.minFocalLengthMm, lens.maxFocalLengthMm)} · ${formatAperture(lens.maxAperture)}`}
+                    viewSpecsLabel={tCatalog("viewSpecsCta")}
+                    addToCompareLabel={tCatalog("addToCompareCta")}
+                  />
+                </li>
               ))}
-            </div>
+            </ul>
           )}
         </div>
       </div>

@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
 
@@ -142,10 +142,33 @@ describe("LensesCatalog", () => {
     render(<LensesCatalog lenses={LENSES} allLenses={LENSES} />);
 
     expect(
-      screen.getAllByRole("link", { name: "View specs" })[0],
+      screen.getAllByRole("link", { name: /^View specs, / })[0],
     ).toHaveAttribute("href", "/lenses/sony-fe-50mm-f1-8");
     expect(
-      screen.getAllByRole("link", { name: "Add to compare" })[0],
+      screen.getAllByRole("link", { name: /^Add to compare, / })[0],
     ).toHaveAttribute("href", "/compare?items=sony-fe-50mm-f1-8");
+  });
+
+  it("renders instead of crashing when the URL names an unsupported mount", () => {
+    mockUseSearchParams.mockReturnValue(new URLSearchParams("mount=canon-ef"));
+
+    render(<LensesCatalog lenses={LENSES} allLenses={LENSES} />);
+
+    const list = screen.getByRole("list", { name: "Results" });
+    expect(within(list).getAllByRole("listitem")).toHaveLength(LENSES.length);
+  });
+
+  it("announces the result count in a status region and lists the cards", () => {
+    render(<LensesCatalog lenses={LENSES} allLenses={LENSES} />);
+
+    expect(screen.getByRole("status")).toHaveTextContent(
+      `Results: ${LENSES.length}`,
+    );
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Results" }),
+    ).toBeInTheDocument();
+    const list = screen.getByRole("list", { name: "Results" });
+    expect(list).not.toHaveAttribute("aria-live");
+    expect(within(list).getAllByRole("listitem")).toHaveLength(LENSES.length);
   });
 });

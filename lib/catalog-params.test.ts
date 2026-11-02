@@ -50,6 +50,22 @@ describe("parseCameraFilters", () => {
     ).toEqual({});
   });
 
+  it("drops sensor formats and mounts the app doesn't support", () => {
+    // A hand-edited or stale URL must never reach the catalog as a typed
+    // SensorFormat/MountId: the UI indexes lookup tables by these values.
+    expect(
+      parseCameraFilters(
+        new URLSearchParams("sensor=full-frame,bogus&mount=canon-ef,sony-e"),
+      ),
+    ).toEqual({ sensorFormats: ["full-frame"], mounts: ["sony-e"] });
+  });
+
+  it("omits sensor and mount entirely when every value is unsupported", () => {
+    expect(
+      parseCameraFilters(new URLSearchParams("sensor=bogus&mount=toString")),
+    ).toEqual({});
+  });
+
   it("round-trips through serializeCameraFilters", () => {
     const filters = {
       brands: ["Sony", "Fujifilm"],
@@ -95,6 +111,12 @@ describe("parseLensFilters", () => {
     expect(parseLensFilters(new URLSearchParams("focal_type=bogus"))).toEqual(
       {},
     );
+  });
+
+  it("drops mounts the app doesn't support", () => {
+    expect(
+      parseLensFilters(new URLSearchParams("mount=bogus,fujifilm-x")),
+    ).toEqual({ mounts: ["fujifilm-x"] });
   });
 
   it("parses min_focal, max_focal, and max_aperture as numbers", () => {

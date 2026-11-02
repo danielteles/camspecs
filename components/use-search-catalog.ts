@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import type { CatalogItem } from "@/lib/search";
+import { parseCatalogResponse, type CatalogItem } from "@/lib/search";
 
 export const SEARCH_CATALOG_URL = "/api/catalog";
 
@@ -33,7 +33,13 @@ export function useSearchCatalog(enabled: boolean): {
         }
         return res.json();
       })
-      .then((data: { items: CatalogItem[] }) => setCatalog(data.items))
+      .then((data: unknown) => {
+        const items = parseCatalogResponse(data);
+        if (!items) {
+          throw new Error("unexpected catalog body");
+        }
+        setCatalog(items);
+      })
       .catch((error: unknown) => {
         if (error instanceof DOMException && error.name === "AbortError") {
           return;
