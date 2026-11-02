@@ -16,6 +16,13 @@ import type { Camera, Lens, MountId, SensorFormat } from "@/lib/types";
 // page-level `revalidate` exports that carry the same fallback role.
 const EQUIPMENT_CACHE_REVALIDATE_SECONDS = 60 * 60 * 24 * 14; // 14 days
 
+// unstable_cache stores results as JSON, so on a cache hit every Date comes
+// back as an ISO string despite the Camera/Lens types. Each cached read is
+// exported through this, so consumers always get a real Date.
+function reviveUpdatedAt<T extends { updatedAt: Date }>(item: T): T {
+  return { ...item, updatedAt: new Date(item.updatedAt) };
+}
+
 // Re-derived from MountId rather than trusted from the DB column, which is
 // a plain String with no enum constraint of its own (see
 // scripts/scraper/db/schema.py) — this is the last line of defense against
@@ -200,11 +207,18 @@ async function fetchFilteredCameras(
     .filter((camera): camera is Camera => camera !== null);
 }
 
-export const getFilteredCameras = unstable_cache(
+const getCachedCameras = unstable_cache(
   fetchFilteredCameras,
   ["equipment-cameras"],
   { tags: ["cameras"], revalidate: EQUIPMENT_CACHE_REVALIDATE_SECONDS },
 );
+
+export async function getFilteredCameras(
+  filters?: CameraFilters,
+  sort?: CameraSort,
+): Promise<Camera[]> {
+  return (await getCachedCameras(filters, sort)).map(reviveUpdatedAt);
+}
 
 export async function getAllCameras(): Promise<Camera[]> {
   return getFilteredCameras();
@@ -286,11 +300,18 @@ async function fetchFilteredLenses(
   return rows.map(toLens).filter((lens): lens is Lens => lens !== null);
 }
 
-export const getFilteredLenses = unstable_cache(
+const getCachedLenses = unstable_cache(
   fetchFilteredLenses,
   ["equipment-lenses"],
   { tags: ["lenses"], revalidate: EQUIPMENT_CACHE_REVALIDATE_SECONDS },
 );
+
+export async function getFilteredLenses(
+  filters?: LensFilters,
+  sort?: LensSort,
+): Promise<Lens[]> {
+  return (await getCachedLenses(filters, sort)).map(reviveUpdatedAt);
+}
 
 export async function getAllLenses(): Promise<Lens[]> {
   return getFilteredLenses();
@@ -305,11 +326,16 @@ async function fetchCameraBySlug(slug: string): Promise<Camera | null> {
   return row ? toCamera(row) : null;
 }
 
-export const getCameraBySlug = unstable_cache(
+const getCachedCameraBySlug = unstable_cache(
   fetchCameraBySlug,
   ["equipment-camera-by-slug"],
   { tags: ["cameras"], revalidate: EQUIPMENT_CACHE_REVALIDATE_SECONDS },
 );
+
+export async function getCameraBySlug(slug: string): Promise<Camera | null> {
+  const camera = await getCachedCameraBySlug(slug);
+  return camera ? reviveUpdatedAt(camera) : null;
+}
 
 async function fetchLensBySlug(slug: string): Promise<Lens | null> {
   const row = await getDb()
@@ -320,8 +346,13 @@ async function fetchLensBySlug(slug: string): Promise<Lens | null> {
   return row ? toLens(row) : null;
 }
 
-export const getLensBySlug = unstable_cache(
+const getCachedLensBySlug = unstable_cache(
   fetchLensBySlug,
   ["equipment-lens-by-slug"],
   { tags: ["lenses"], revalidate: EQUIPMENT_CACHE_REVALIDATE_SECONDS },
 );
+
+export async function getLensBySlug(slug: string): Promise<Lens | null> {
+  const lens = await getCachedLensBySlug(slug);
+  return lens ? reviveUpdatedAt(lens) : null;
+}

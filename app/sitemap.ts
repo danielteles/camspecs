@@ -46,15 +46,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     getAllLenses(),
   ]);
 
-  // unstable_cache round-trips values through JSON, so on a cache hit
-  // updatedAt is an ISO string despite its Date type — normalize it.
   return [
     ...entries,
     ...cameras.flatMap((camera) =>
-      localizedEntries(`/cameras/${camera.slug}`, new Date(camera.updatedAt)),
+      localizedEntries(`/cameras/${camera.slug}`, camera.updatedAt),
     ),
     ...lenses.flatMap((lens) =>
-      localizedEntries(`/lenses/${lens.slug}`, new Date(lens.updatedAt)),
+      localizedEntries(`/lenses/${lens.slug}`, lens.updatedAt),
     ),
   ];
 }
