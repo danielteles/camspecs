@@ -2,10 +2,12 @@ import { ExternalLinkIcon } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { SupportLink } from "@/components/support-link";
 import { Link } from "@/i18n/navigation";
 import { resolveComparisonItems } from "@/lib/compare-data";
 import { isDatabaseConfigured } from "@/lib/db/client";
 import { getAllCameras, getAllLenses } from "@/lib/services/equipment";
+import { getSupportUrl } from "@/lib/site-config";
 
 const GITHUB_URL = "https://github.com/danielteles/camspecs";
 
@@ -28,6 +30,7 @@ const FOOTER_LINK_CLASSNAME =
 export async function Footer() {
   const t = await getTranslations("Footer");
   const tCommon = await getTranslations("Common");
+  const supportUrl = getSupportUrl();
 
   // The footer renders on every page, so this runs during static generation
   // for the whole site — a CI build with the DB secret unset would
@@ -103,6 +106,9 @@ export async function Footer() {
             {t("githubLink")}
             <ExternalLinkIcon className="size-3.5 shrink-0" aria-hidden />
           </a>
+          {supportUrl && (
+            <SupportLink href={supportUrl} className={FOOTER_LINK_CLASSNAME} />
+          )}
         </div>
       </div>
     </footer>
