@@ -34,7 +34,7 @@ export async function WhereToBuy({ links }: WhereToBuyProps) {
               target="_blank"
               // "sponsored" is Google's required marker for paid links.
               rel="sponsored nofollow noopener noreferrer"
-              className="border-border hover:bg-muted focus-visible:ring-ring/50 inline-flex min-h-9 items-center gap-1.5 rounded-md border px-3 text-sm font-medium focus-visible:ring-3 focus-visible:outline-none"
+              className="border-border hover:bg-muted focus-visible:ring-ring inline-flex min-h-9 items-center gap-1.5 rounded-md border px-3 text-sm font-medium focus-visible:ring-3 focus-visible:outline-none"
             >
               {t("checkPriceAt", { retailer: link.name })}
               <ExternalLinkIcon

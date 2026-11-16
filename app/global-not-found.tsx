@@ -7,6 +7,7 @@ import { cookies, headers } from "next/headers";
 import { Button } from "@/components/ui/button";
 import { loadMessages } from "@/i18n/messages";
 import { routing } from "@/i18n/routing";
+import { THEME_INIT_SCRIPT } from "@/lib/theme";
 
 import "./globals.css";
 
@@ -60,7 +61,12 @@ export default async function GlobalNotFound() {
       lang={locale}
       dir="ltr"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      // The theme script adds `dark` to the class list before hydration.
+      suppressHydrationWarning
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
       <body className="flex min-h-full flex-col">
         <main
           id="main-content"

@@ -180,7 +180,7 @@ export default async function CameraPage({
               <li key={lens.slug}>
                 <Link
                   href={`/lenses/${lens.slug}`}
-                  className="focus-visible:ring-ring/50 rounded-md text-sm font-medium hover:underline focus-visible:ring-3 focus-visible:outline-none"
+                  className="focus-visible:ring-ring rounded-md text-sm font-medium hover:underline focus-visible:ring-3 focus-visible:outline-none"
                 >
                   {lens.brand} {lens.model}
                 </Link>

@@ -44,7 +44,7 @@ export function ActiveFilterBadges({
             type="button"
             onClick={chip.onRemove}
             aria-label={removeLabel(chip.label)}
-            className="hover:bg-background/60 focus-visible:ring-ring/50 -mr-0.5 rounded-full p-0.5 outline-none focus-visible:ring-2"
+            className="hover:bg-background/60 focus-visible:ring-ring -mr-0.5 rounded-full p-0.5 outline-none focus-visible:ring-2"
           >
             <XIcon className="size-3" />
           </button>

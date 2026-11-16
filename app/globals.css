@@ -25,6 +25,7 @@
   --color-chart-1: var(--chart-1);
   --color-ring: var(--ring);
   --color-input: var(--input);
+  --color-input-border: var(--input-border);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
   --color-accent-foreground: var(--accent-foreground);
@@ -49,6 +50,7 @@
 }
 
 :root {
+  color-scheme: light;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -67,11 +69,21 @@
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   /*
+   * Form-field edges (input, textarea, checkbox, command search). --input
+   * alone was ~1.2:1 against white, short of the 3:1 WCAG 2.1 SC 1.4.11
+   * (Non-text Contrast) minimum for the boundary that identifies a field.
+   * It stays as the fill tint (bg-input/30, disabled:bg-input/50), so
+   * borders get their own token: ~3.5:1 on background/card, ~3.2:1 on muted.
+   */
+  --input-border: oklch(0.63 0 0);
+  /*
    * The Nova preset's default light-mode ring (oklch(0.708 0 0)) only
    * reaches ~2.6:1 contrast against a white background, short of the 3:1
    * WCAG 2.1 SC 1.4.11 (Non-text Contrast) minimum for focus indicators.
    * oklch(0.556 0 0) — the same value already used for light-mode
-   * muted-foreground, and for dark-mode ring — reaches ~4.7:1.
+   * muted-foreground, and for dark-mode ring — reaches ~4.7:1. Focus rings
+   * use it at full opacity (`ring-ring`, not `ring-ring/50`): at half alpha
+   * it drops under 3:1 in both themes.
    */
   --ring: oklch(0.556 0 0);
   --chart-1: oklch(0.87 0 0);
@@ -91,6 +103,7 @@
 }
 
 .dark {
+  color-scheme: dark;
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
@@ -108,6 +121,8 @@
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
+  /* ~4.1:1 on background, ~3.7:1 on card/popover, ~3.1:1 on muted. */
+  --input-border: oklch(0.55 0 0);
   --ring: oklch(0.556 0 0);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
@@ -126,7 +141,7 @@
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border outline-ring;
   }
   body {
     @apply bg-background text-foreground;

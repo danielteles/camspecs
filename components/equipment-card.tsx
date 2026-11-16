@@ -27,7 +27,7 @@ export function EquipmentCard({
     <Link
       href={href}
       className={cn(
-        "border-border focus-visible:ring-ring/50 hover:bg-muted group flex flex-col gap-2 rounded-lg border p-4 transition-colors focus-visible:ring-3 focus-visible:outline-none",
+        "border-border focus-visible:ring-ring hover:bg-muted group flex flex-col gap-2 rounded-lg border p-4 transition-colors focus-visible:ring-3 focus-visible:outline-none",
         className,
       )}
     >

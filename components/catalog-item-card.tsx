@@ -43,7 +43,7 @@ export function CatalogItemCard({
       <h3 className="text-base font-semibold tracking-tight">
         <Link
           href={href}
-          className="focus-visible:ring-ring/50 rounded-md hover:underline focus-visible:ring-3 focus-visible:outline-none"
+          className="focus-visible:ring-ring rounded-md hover:underline focus-visible:ring-3 focus-visible:outline-none"
         >
           {title}
         </Link>

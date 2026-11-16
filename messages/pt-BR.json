@@ -5,6 +5,12 @@
   "LanguageSwitcher": {
     "label": "Idioma"
   },
+  "Theme": {
+    "label": "Tema",
+    "system": "Tema do sistema",
+    "light": "Tema claro",
+    "dark": "Tema escuro"
+  },
   "Metadata": {
     "title": "CamSpecs — Calculadora de Equivalência de Câmeras e Lentes",
     "description": "Compare câmeras e lentes entre formatos de sensor com uma calculadora de equivalência dinâmica."
