@@ -29,6 +29,27 @@ describe("Navbar", () => {
     );
   });
 
+  it("links to the tip jar in a new tab when a support URL is given", () => {
+    mockUsePathname.mockReturnValue("/");
+    render(<Navbar supportUrl="https://ko-fi.com/camspecs" />);
+
+    const link = screen.getByRole("link", {
+      name: "Buy me a coffee (opens in a new tab)",
+    });
+    expect(link).toHaveAttribute("href", "https://ko-fi.com/camspecs");
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", "noopener noreferrer");
+  });
+
+  it("hides the tip jar link without a support URL", () => {
+    mockUsePathname.mockReturnValue("/");
+    render(<Navbar />);
+
+    expect(
+      screen.queryByRole("link", { name: /Buy me a coffee/ }),
+    ).not.toBeInTheDocument();
+  });
+
   it("marks the current route active via aria-current", () => {
     mockUsePathname.mockReturnValue("/compare");
     render(<Navbar />);

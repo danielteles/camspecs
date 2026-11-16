@@ -1,6 +1,6 @@
 "use client";
 
-import { MenuIcon } from "lucide-react";
+import { CoffeeIcon, MenuIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import type { ReactNode } from "react";
@@ -63,8 +63,14 @@ function NavLink({
   );
 }
 
-export function Navbar() {
+interface NavbarProps {
+  /** Tip-jar page; undefined hides the header's support button. */
+  supportUrl?: string | undefined;
+}
+
+export function Navbar({ supportUrl }: NavbarProps) {
   const t = useTranslations("Common");
+  const tSupport = useTranslations("Support");
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
@@ -90,6 +96,22 @@ export function Navbar() {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Outside the mobile menu on purpose: the footer link alone was
+              too easy to miss. Icon-only, so the label lives in aria-label
+              and title (the hover hint for sighted mouse users). */}
+          {supportUrl && (
+            <Button variant="ghost" size="icon" asChild>
+              <a
+                href={supportUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`${tSupport("linkLabel")} ${t("opensInNewTab")}`}
+                title={tSupport("linkLabel")}
+              >
+                <CoffeeIcon aria-hidden />
+              </a>
+            </Button>
+          )}
           <div className="hidden md:block">
             <LanguageSwitcher />
           </div>

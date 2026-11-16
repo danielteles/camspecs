@@ -7,7 +7,7 @@ import { notFound } from "next/navigation";
 import { Footer } from "@/components/footer";
 import { Navbar } from "@/components/navbar";
 import { routing } from "@/i18n/routing";
-import { SITE_URL } from "@/lib/site-config";
+import { getSupportUrl, SITE_URL } from "@/lib/site-config";
 
 import "../globals.css";
 
@@ -66,7 +66,7 @@ export default async function LocaleLayout({
           {t("skipToContent")}
         </a>
         <NextIntlClientProvider>
-          <Navbar />
+          <Navbar supportUrl={getSupportUrl()} />
           {children}
           <Footer />
         </NextIntlClientProvider>
