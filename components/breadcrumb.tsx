@@ -24,7 +24,7 @@ export function Breadcrumb({ items, label }: BreadcrumbProps) {
               {item.href && !isLast ? (
                 <Link
                   href={item.href}
-                  className="focus-visible:ring-ring/50 hover:text-foreground rounded-md hover:underline focus-visible:ring-3 focus-visible:outline-none"
+                  className="focus-visible:ring-ring hover:text-foreground rounded-md hover:underline focus-visible:ring-3 focus-visible:outline-none"
                 >
                   {item.label}
                 </Link>

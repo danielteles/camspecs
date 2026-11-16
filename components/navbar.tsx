@@ -6,6 +6,7 @@ import { useState } from "react";
 import type { ReactNode } from "react";
 
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { ThemeSwitcher } from "@/components/theme-switcher";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -51,7 +52,7 @@ function NavLink({
       onClick={onNavigate}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "focus-visible:ring-ring/50 rounded-md text-sm font-medium transition-colors focus-visible:ring-3 focus-visible:outline-none",
+        "focus-visible:ring-ring rounded-md text-sm font-medium transition-colors focus-visible:ring-3 focus-visible:outline-none",
         active
           ? "text-foreground"
           : "text-muted-foreground hover:text-foreground",
@@ -79,7 +80,7 @@ export function Navbar({ supportUrl }: NavbarProps) {
         <div className="flex items-center gap-6">
           <Link
             href="/"
-            className="focus-visible:ring-ring/50 rounded-md text-base font-semibold tracking-tight focus-visible:ring-3 focus-visible:outline-none"
+            className="focus-visible:ring-ring rounded-md text-base font-semibold tracking-tight focus-visible:ring-3 focus-visible:outline-none"
           >
             {t("siteName")}
           </Link>
@@ -112,7 +113,8 @@ export function Navbar({ supportUrl }: NavbarProps) {
               </a>
             </Button>
           )}
-          <div className="hidden md:block">
+          <div className="hidden items-center gap-2 md:flex">
+            <ThemeSwitcher />
             <LanguageSwitcher />
           </div>
 
@@ -150,7 +152,8 @@ export function Navbar({ supportUrl }: NavbarProps) {
                   </NavLink>
                 ))}
               </nav>
-              <div className="border-border mt-auto border-t pt-4">
+              <div className="border-border mt-auto flex flex-col gap-3 border-t pt-4">
+                <ThemeSwitcher />
                 <LanguageSwitcher />
               </div>
             </SheetContent>

@@ -25,7 +25,7 @@ const POPULAR_COMPARISON_SLUGS: [string, string][] = [
 ];
 
 const FOOTER_LINK_CLASSNAME =
-  "focus-visible:ring-ring/50 text-muted-foreground hover:text-foreground w-fit rounded-md focus-visible:ring-3 focus-visible:outline-none hover:underline";
+  "focus-visible:ring-ring text-muted-foreground hover:text-foreground w-fit rounded-md focus-visible:ring-3 focus-visible:outline-none hover:underline";
 
 export async function Footer() {
   const t = await getTranslations("Footer");

@@ -77,7 +77,7 @@ export default async function ComparePage({
                 <TableHead key={item.slug} scope="col">
                   <Link
                     href={`/${item.type === "camera" ? "cameras" : "lenses"}/${item.slug}`}
-                    className="focus-visible:ring-ring/50 rounded-md hover:underline focus-visible:ring-3 focus-visible:outline-none"
+                    className="focus-visible:ring-ring rounded-md hover:underline focus-visible:ring-3 focus-visible:outline-none"
                   >
                     {item.brand} {item.model}
                   </Link>
@@ -117,7 +117,7 @@ export default async function ComparePage({
               <Link
                 id={`compare-card-${item.slug}`}
                 href={`/${item.type === "camera" ? "cameras" : "lenses"}/${item.slug}`}
-                className="focus-visible:ring-ring/50 rounded-md hover:underline focus-visible:ring-3 focus-visible:outline-none"
+                className="focus-visible:ring-ring rounded-md hover:underline focus-visible:ring-3 focus-visible:outline-none"
               >
                 {item.brand} {item.model}
               </Link>
@@ -198,7 +198,7 @@ export default async function ComparePage({
                   {tSupport("compareNudge")}{" "}
                   <SupportLink
                     href={supportUrl}
-                    className="text-foreground focus-visible:ring-ring/50 rounded-md font-medium underline-offset-4 hover:underline focus-visible:ring-3 focus-visible:outline-none"
+                    className="text-foreground focus-visible:ring-ring rounded-md font-medium underline-offset-4 hover:underline focus-visible:ring-3 focus-visible:outline-none"
                   />
                 </p>
               )}

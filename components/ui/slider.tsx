@@ -42,7 +42,7 @@ function Slider({
           key={index}
           data-slot="slider-thumb"
           aria-label={thumbLabels?.[index]}
-          className="border-primary bg-background focus-visible:ring-ring/50 block size-4 shrink-0 rounded-full border-2 shadow-sm transition-colors outline-none focus-visible:ring-3 disabled:pointer-events-none disabled:opacity-50"
+          className="border-primary bg-background focus-visible:ring-ring block size-4 shrink-0 rounded-full border-2 shadow-sm transition-colors outline-none focus-visible:ring-3 disabled:pointer-events-none disabled:opacity-50"
         />
       ))}
     </SliderPrimitive.Root>

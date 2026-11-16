@@ -173,7 +173,7 @@ export function CompareSelector({
                   aria-label={t("removeItem", {
                     item: `${item.brand} ${item.model}`,
                   })}
-                  className="hover:bg-foreground/10 focus-visible:ring-ring/50 rounded-full p-0.5 focus-visible:ring-3 focus-visible:outline-none"
+                  className="hover:bg-foreground/10 focus-visible:ring-ring rounded-full p-0.5 focus-visible:ring-3 focus-visible:outline-none"
                 >
                   <XIcon className="size-3" aria-hidden />
                 </button>
