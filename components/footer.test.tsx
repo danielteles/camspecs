@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { Footer } from "@/components/footer";
 import { getAllCameras } from "@/lib/services/equipment";
@@ -36,6 +36,10 @@ const CANON_R6_II: Camera = {
 };
 
 describe("Footer", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it("renders localized catalog links", async () => {
     render(await Footer());
 
@@ -73,6 +77,29 @@ describe("Footer", () => {
     );
     expect(link).toHaveAttribute("target", "_blank");
     expect(link).toHaveAttribute("rel", "noopener noreferrer");
+  });
+
+  it("links to the tip jar when a support URL is configured", async () => {
+    vi.stubEnv("NEXT_PUBLIC_SUPPORT_URL", "https://ko-fi.com/camspecs");
+
+    render(await Footer());
+
+    const link = screen.getByRole("link", {
+      name: "Buy me a coffee (opens in a new tab)",
+    });
+    expect(link).toHaveAttribute("href", "https://ko-fi.com/camspecs");
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", "noopener noreferrer");
+  });
+
+  it("hides the tip jar link when no support URL is configured", async () => {
+    vi.stubEnv("NEXT_PUBLIC_SUPPORT_URL", "");
+
+    render(await Footer());
+
+    expect(
+      screen.queryByRole("link", { name: /Buy me a coffee/ }),
+    ).not.toBeInTheDocument();
   });
 
   it("includes the language switcher", async () => {

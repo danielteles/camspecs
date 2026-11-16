@@ -50,6 +50,26 @@ server, set up a database connection.
    real camera and lens data. If `DATABASE_URL` is not set, the app still
    runs, but the catalog and product pages render empty.
 
+   Optional: the tip jar and affiliate links are off until you set their
+   variables. Each one is independent. An unset or invalid value hides
+   only that link.
+
+   | Variable                      | Effect                                                                                                                                          |
+   | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+   | `NEXT_PUBLIC_SUPPORT_URL`     | Tip-jar page (for example `https://ko-fi.com/<name>`). Shows a footer link, and a line under a comparison of 2 or more items. Must be `https:`. |
+   | `AFFILIATE_AMAZON_TAG_US`     | Amazon Associates tag for amazon.com. Used on `en` and `es` pages.                                                                              |
+   | `AFFILIATE_AMAZON_TAG_BR`     | Amazon Associates tag for amazon.com.br. Used on `pt-BR` pages.                                                                                 |
+   | `AFFILIATE_BH_LINK_TEMPLATE`  | Affiliate-network deep link for B&H. `{url}` is replaced with the encoded B&H search URL, for example `https://network.example/c/123?u={url}`.  |
+   | `AFFILIATE_MPB_LINK_TEMPLATE` | Same as above, for MPB (used gear).                                                                                                             |
+
+   Affiliate links appear in a "Where to buy" section on camera and lens
+   pages (`lib/affiliate.ts`). They link to each retailer's search results
+   for the product name, so no per-item data is needed. Each locale shows
+   only the stores that serve its likely readers: `en` gets Amazon US, B&H,
+   and MPB; `es` (mostly Latin America) gets Amazon US and B&H; `pt-BR`
+   gets only Amazon Brasil, because import duty makes US stores a poor
+   deal in Brazil.
+
 3. Run the development server.
 
    ```bash

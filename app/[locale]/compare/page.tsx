@@ -7,6 +7,7 @@ import { CompareTableOverlay } from "@/components/compare-table-overlay";
 import { CompareTransitionProvider } from "@/components/compare-transition-provider";
 import { DiffToggle } from "@/components/diff-toggle";
 import { LastUpdatedBadge } from "@/components/last-updated-badge";
+import { SupportLink } from "@/components/support-link";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -27,6 +28,7 @@ import {
 import { COMPARE_ITEMS_PARAM, parseCompareItems } from "@/lib/compare-params";
 import { toCatalogItem } from "@/lib/search";
 import { getAllCameras, getAllLenses } from "@/lib/services/equipment";
+import { getSupportUrl } from "@/lib/site-config";
 
 export default async function ComparePage({
   params,
@@ -37,6 +39,8 @@ export default async function ComparePage({
 
   const t = await getTranslations("ComparePage");
   const tGlobal = await getTranslations();
+  const tSupport = await getTranslations("Support");
+  const supportUrl = getSupportUrl();
 
   const resolvedSearchParams = await searchParams;
   const itemsParam = resolvedSearchParams[COMPARE_ITEMS_PARAM];
@@ -186,6 +190,17 @@ export default async function ComparePage({
                   variant="aggregate"
                   className="self-end"
                 />
+              )}
+              {/* Asked only once the user has a real comparison, never on
+                  the empty or single-item states. */}
+              {supportUrl && items.length >= 2 && (
+                <p className="text-muted-foreground text-sm">
+                  {tSupport("compareNudge")}{" "}
+                  <SupportLink
+                    href={supportUrl}
+                    className="text-foreground focus-visible:ring-ring/50 rounded-md font-medium underline-offset-4 hover:underline focus-visible:ring-3 focus-visible:outline-none"
+                  />
+                </p>
               )}
             </>
           )}

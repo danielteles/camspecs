@@ -6,8 +6,10 @@ import { Breadcrumb } from "@/components/breadcrumb";
 import { FieldOfViewVisualizer } from "@/components/field-of-view-visualizer";
 import { LastUpdatedBadge } from "@/components/last-updated-badge";
 import { Button } from "@/components/ui/button";
+import { WhereToBuy } from "@/components/where-to-buy";
 import { localeAlternates } from "@/i18n/alternates";
 import { Link } from "@/i18n/navigation";
+import { buildRetailerLinks, getAffiliateConfig } from "@/lib/affiliate";
 import {
   buildComparisonRows,
   formatRowValue,
@@ -101,6 +103,12 @@ export default async function LensPage({
     (camera) => camera.mount === item.mount,
   );
 
+  const retailerLinks = buildRetailerLinks(
+    `${item.brand} ${item.model}`,
+    locale,
+    getAffiliateConfig(),
+  );
+
   return (
     <main
       id="main-content"
@@ -154,6 +162,8 @@ export default async function LensPage({
         </dl>
         <LastUpdatedBadge date={item.updatedAt} className="self-end" />
       </section>
+
+      <WhereToBuy links={retailerLinks} />
 
       {compatibleCameras[0] && (
         <section

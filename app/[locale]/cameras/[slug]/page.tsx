@@ -5,8 +5,10 @@ import { notFound } from "next/navigation";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { LastUpdatedBadge } from "@/components/last-updated-badge";
 import { Button } from "@/components/ui/button";
+import { WhereToBuy } from "@/components/where-to-buy";
 import { localeAlternates } from "@/i18n/alternates";
 import { Link } from "@/i18n/navigation";
+import { buildRetailerLinks, getAffiliateConfig } from "@/lib/affiliate";
 import {
   buildComparisonRows,
   formatRowValue,
@@ -96,6 +98,12 @@ export default async function CameraPage({
   const lenses = await getAllLenses();
   const compatibleLenses = lenses.filter((lens) => lens.mount === item.mount);
 
+  const retailerLinks = buildRetailerLinks(
+    `${item.brand} ${item.model}`,
+    locale,
+    getAffiliateConfig(),
+  );
+
   return (
     <main
       id="main-content"
@@ -149,6 +157,8 @@ export default async function CameraPage({
         </dl>
         <LastUpdatedBadge date={item.updatedAt} className="self-end" />
       </section>
+
+      <WhereToBuy links={retailerLinks} />
 
       <section
         aria-labelledby="compatible-lenses-heading"

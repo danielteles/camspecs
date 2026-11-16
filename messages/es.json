@@ -24,13 +24,18 @@
     "lensesLink": "Lentes",
     "openMenu": "Abrir menú",
     "closeMenu": "Cerrar menú",
-    "breadcrumbLabel": "Ruta de navegación"
+    "breadcrumbLabel": "Ruta de navegación",
+    "opensInNewTab": "(se abre en una pestaña nueva)"
   },
   "Footer": {
     "catalogsHeading": "Catálogos",
     "popularComparisonsHeading": "Comparaciones populares",
     "moreHeading": "Más",
     "githubLink": "Repositorio en GitHub"
+  },
+  "Support": {
+    "linkLabel": "Invítame a un café",
+    "compareNudge": "¿Te resultó útil esta comparación?"
   },
   "LastUpdated": {
     "label": "Última actualización: {date}",
@@ -146,6 +151,11 @@
     "fovHeading": "Simulador de campo de visión",
     "horizontalFovLabel": "Campo de visión horizontal",
     "focalLengthSliderLabel": "Distancia focal: {value}mm"
+  },
+  "WhereToBuy": {
+    "heading": "Dónde comprar",
+    "checkPriceAt": "Ver precio en {retailer}",
+    "disclosure": "CamSpecs puede recibir una comisión por las compras realizadas a través de estos enlaces. Esto nunca afecta a las especificaciones ni a las comparaciones que se muestran aquí."
   },
   "HomePage": {
     "title": "CamSpecs",
